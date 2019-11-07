@@ -1,8 +1,8 @@
 *-----------------------------------------------------------
-* Title      :
-* Written by :
+* Title      : IO
+* Written by : Team Schmos
 * Date       :
-* Description:
+* Description: This is the file for handling IO
 *-----------------------------------------------------------
     ORG    $1000
 START:                  ; first instruction of program
@@ -24,10 +24,10 @@ START:                  ; first instruction of program
     TRAP    #15
     
     JSR     CHECKVALUES    
-    MOVE.L  A1, STOP
+    MOVE.L  A1, LAST
     
     MOVE.L  BEGIN, A5
-    MOVE.L  STOP, A6
+    MOVE.L  LAST, A6
     
     SIMHALT ;
     
@@ -87,14 +87,12 @@ ENDADDMESS         DC.B    'Please enter an ending address: ',0
 ERRADD             DC.B    'Not an even address',0
 ERRADDLOC          DC.B    'Beginning address must be before ending address',0 
 ERRADD2            DC.B    'Has to be greater than 0 and less than 8',0
-
-
-
-BEGIN       DS.L    1   *beginning address
-STOP        DS.L    1
+BEGIN              DS.L    1   *beginning address
+LAST               DS.L    1
 
      
     END    START        ; last line of source
+
 
 *~Font name~Courier New~
 *~Font size~10~
