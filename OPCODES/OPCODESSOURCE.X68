@@ -74,7 +74,7 @@ jmp_table   JSR         code0000       *for jumping to a specific instruction
 
 code0000         
 
-
+* Handles MOVEA.B, MOVE.B
 code0001    
             LEA         DISP_MOVE,A1
             MOVE.B      #1, D0         
@@ -90,6 +90,7 @@ MOVEB       LEA         DISP_SIZE_B,A1
             TRAP        #15
        SIMHALT
 
+* Handles MOVEA.L, MOVE.L
 code0010       
             LEA         DISP_MOVE,A1
             MOVE.B      #1, D0         
@@ -105,7 +106,7 @@ MOVEL       LEA         DISP_SIZE_L,A1
             TRAP        #15
       SIMHALT
             
-
+* Handles MOVEA.W, MOVE.W
 code0011       
             LEA         DISP_MOVE,A1
             MOVE.B      #1, D0         
@@ -130,17 +131,20 @@ code0101
             TRAP        #15
        SIMHALT
             
-
+* Handles Bcc operations
 code0110        
 
+* Handles MOVEQ
 code0111       
             LEA         DISP_MOVEQ,A1
             MOVE.B      #1, D0         
             TRAP        #15
        SIMHALT
-            
+       
+* Handles OR, DIV operations         
 code1000       
 
+* Handles SUB
 code1001      
             LEA         DISP_SUB,A1
             MOVE.B      #1, D0         
@@ -163,21 +167,24 @@ SUBL        LEA     DISP_SIZE_L,A1
 
 SUBB        LEA     DISP_SIZE_B,A1
             TRAP    #15
-       SIMHALT          
-            
+       SIMHALT
+       
+* Unassigned           
 code1010                      
 
+* Unassigned
 code1011        
 
+* Handles AND, MUL
 code1100       
             LEA         DISP_MULS,A1
             MOVE.B      #1, D0         
             TRAP        #15
-
+* Handles ADD, ADDA
 code1101       
-                
+* Handles shift operations                
 code1110       
-
+* Reserved of SIMHALT
 code1111       
   
 
