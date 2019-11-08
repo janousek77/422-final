@@ -5,7 +5,8 @@
 * Description: This is the file for handling OPCODES
 *-----------------------------------------------------------
 stack       EQU      $A000
-example     EQU      %1001111000100001  * I made up bits 0 to 11      
+                     *0100 1110 10 110 101
+example     EQU      %0100111010110101  * I made up bits 0 to 11      
  
         ORG     $400
 
@@ -25,6 +26,14 @@ start       LEA         stack,SP        *Load the SP
             MOVE.B      #13,D1          *Shift 12 bits to the right  
             LSR.W       D1,D0           *Move the bits
             MOVE.B      D0,NINE_ELE
+            
+            CLR.L       D0              *Zero it            
+            MOVE.W      #example,D0     *We'll play with it here
+            MOVE.B      #4,D1           *Shift 12 bits to the right  
+            LSL.W       D1,D0           *Move the bits
+            MOVE.B      #12,D1          *Shift 12 bits to the right  
+            LSR.W       D1,D0           *Move the bits
+            MOVE.B      D0,CONDITION
 
             CLR.L       D0              *Zero it            
             MOVE.W      #example,D0     *We'll play with it here
@@ -122,28 +131,169 @@ MOVEW       LEA         DISP_SIZE_W,A1
             TRAP        #15
        SIMHALT
             
-code0100       
+code0100    
+            MOVE.B      #1,D0
+            
+            MOVE.B      CONDITION,D3
+            LSR.B       #1,D3
+            BCS         ISLEA           *JUMPS TO LEA OPCODE
+            
+            LSR.B       #1,D3
+            BCC         ISMOVEM         *JUMPS TO MOVEM OPCODE
+            
+            LSL.B       #7,D3
+            BCC         ISNOT           *JUMPS TO NOT OPCODE
+            
+            MOVE.B      SIX_EIGT,D3
+            LSR.B       #2, D3
+            BCS         ISJSR           *JUMPS TO JSR OPCODE
+            
+            MOVE.B      ZERO_TWO,D3
+            CMP.B       #1,D3
+            BEQ         ISNOP           *JUMPS TO NOP OPCODE
+            
+            BRA         ISRTS           *DEFAULTS TO RTS
+            
+ISLEA
+            LEA         DISP_LEA, A1
+            TRAP        #15
+            SIMHALT
+            
+ISMOVEM
+            LEA         DISP_MOVEM, A1
+            TRAP        #15
+            SIMHALT
+ISNOT
+            LEA         DISP_NOT, A1
+            TRAP        #15
+            SIMHALT
+ISJSR
+            LEA         DISP_JSR, A1
+            TRAP        #15
+            SIMHALT
+ISNOP
+            LEA         DISP_NOP, A1
+            TRAP        #15
+            SIMHALT
+ISRTS
+            LEA         DISP_RTS, A1
+            TRAP        #15 
+            SIMHALT                    
 
-
+* Handles ADDQ
 code0101       
             LEA         DISP_ADDQ,A1
             MOVE.B      #1, D0         
             TRAP        #15
+            
+            MOVE.B SIX_EIGT,D0          
+            LSR.B  #1,D0                *If first bit is one its word. Second a long
+            BCS    ADDQW
+            LSR.B  #1,D0
+            BCS    ADDQL
+            BRA    ADDQB
+            
+ADDQW       LEA     DISP_SIZE_W,A1   
+            TRAP    #15
        SIMHALT
             
+ADDQL       LEA     DISP_SIZE_L,A1
+            TRAP    #15
+       SIMHALT
+
+ADDQB       LEA     DISP_SIZE_B,A1
+            TRAP    #15
+       SIMHALT
+
+            
 * Handles Bcc operations
-code0110        
+code0110
+            MOVE.B      #1, D0   
+            MOVE.B      CONDITION,D2
+            CMP         #0,D2
+            BEQ         ISBRA
+            CMP         #15,D2
+            BEQ         ISLE
+            CMP         #7,D2
+            BEQ         ISEQ
+            CMP         #14,D2
+            BEQ         ISGT
+            
+            LEA         DISP_BLE,A1  
+            TRAP        #15
+                  SIMHALT
+
+            
+ISBRA
+            LEA         DISP_BRA,A1  
+            TRAP        #15
+                  SIMHALT
+
+
+ISLE
+            LEA         DISP_BLE,A1  
+            TRAP        #15
+                  SIMHALT
+
+
+ISGT
+            LEA         DISP_BGT,A1  
+            TRAP        #15
+                  SIMHALT
+                  
+ISEQ
+            LEA         DISP_BEQ,A1  
+            TRAP        #15
+                  SIMHALT
+
+
+
+        
 
 * Handles MOVEQ
 code0111       
-            LEA         DISP_MOVEQ,A1
+            LEA         DISP_MOVEQ, A1
             MOVE.B      #1, D0         
             TRAP        #15
        SIMHALT
        
 * Handles OR, DIV operations         
-code1000       
+code1000
+            MOVE.B      SIX_EIGT, D2
+            CMP.B       #3, D2
+            BEQ         ISDIV 
+            
+            CLR         D0
+            LEA         DISP_OR, A1
+            MOVE.B      #1, D0
+            TRAP        #15
+            
+            LSR.B       #1, D2               *If first bit is one its word. Second a long
+            BCS         ORW
+            LSR.B       #1, D2
+            BCS         ORL
+            BRA         ORB
 
+ORW         LEA         DISP_SIZE_W, A1   
+            TRAP        #15
+       SIMHALT
+            
+ORL         LEA     DISP_SIZE_L,A1
+            TRAP    #15
+       SIMHALT
+
+ORB         LEA     DISP_SIZE_B,A1
+            TRAP    #15
+       SIMHALT
+
+
+ISDIV       LEA         DISP_DIVU,A1
+            MOVE.B      #1, D0
+            TRAP        #15
+            LEA     DISP_SIZE_W,A1   
+            TRAP    #15
+    
+            SIMHALT
 * Handles SUB
 code1001      
             LEA         DISP_SUB,A1
@@ -177,15 +327,194 @@ code1011
 
 * Handles AND, MUL
 code1100       
-            LEA         DISP_MULS,A1
-            MOVE.B      #1, D0         
+            MOVE.B      SIX_EIGT, D2
+            CMP.B       #7, D2
+            BEQ         ISMUL 
+            
+            CLR         D0
+            LEA         DISP_AND, A1
+            MOVE.B      #1, D0
             TRAP        #15
+            
+            LSR.B       #1, D2               *If first bit is one its word. Second a long
+            BCS         ANDW
+            LSR.B       #1, D2
+            BCS         ANDL
+            BRA         ANDB
+
+ANDW        LEA         DISP_SIZE_W, A1   
+            TRAP        #15
+       SIMHALT
+            
+ANDL        LEA         DISP_SIZE_L,A1
+            TRAP        #15
+       SIMHALT
+
+ANDB        LEA         DISP_SIZE_B,A1
+            TRAP        #15
+       SIMHALT
+
+
+ISMUL       LEA         DISP_MULS,A1
+            MOVE.B      #1, D0
+            TRAP        #15
+            LEA     DISP_SIZE_W,A1   
+            TRAP    #15
+    
+            SIMHALT
+
 * Handles ADD, ADDA
-code1101       
+code1101
+            MOVE.B      SIX_EIGT, D2
+            CMP.B       #7, D2
+            BEQ         ISADDA
+            CMP.B       #3, D2
+            BEQ         ISADDA
+
+ 
+            
+            CLR         D0
+            LEA         DISP_ADD, A1
+            MOVE.B      #1, D0
+            TRAP        #15
+            
+            LSR.B       #1, D2               *If first bit is one its word. Second a long
+            BCS         ADDW
+            LSR.B       #1, D2
+            BCS         ADDL
+            BRA         ADDB
+
+ADDW        LEA         DISP_SIZE_W, A1   
+            TRAP        #15
+       SIMHALT
+            
+ADDL        LEA         DISP_SIZE_L,A1
+            TRAP        #15
+       SIMHALT
+
+ADDB        LEA         DISP_SIZE_B,A1
+            TRAP        #15
+       SIMHALT
+
+
+ISADDA      LEA         DISP_ADDA,A1
+            MOVE.B      #1, D0
+            TRAP        #15
+            CMP         #3, D2
+            BEQ         ADDAW
+            
+            LEA         DISP_SIZE_L,A1
+            TRAP        #15
+            SIMHALT
+                      
+ADDAW       LEA         DISP_SIZE_W,A1   
+            TRAP        #15
+    
+            SIMHALT
+
+                   
 * Handles shift operations                
-code1110       
+code1110
+            
+            MOVE.B      SIX_EIGT, D2
+            LSL.B       #7, D2
+            BCS         CHECKNXTBIT
+            BRA         ISREGSHIFT
+            
+            
+CHECKNXTBIT LSL.B      #1, D2
+            BCS        ISMEMSHIFT
+            BRA        ISREGSHIFT
+            
+            
+            
+            
+ISMEMSHIFT MOVE.B       NINE_ELE, D2
+           MOVE.B       #1, MEMORREG        *IF MEMORY SHIFT SET MEMORREG TO 1
+           LSR.B        #1, D2
+           BCS          ISLSHIFT
+           BRA          ISASHIFT
+           
+ISREGSHIFT MOVE.B       TREE_FIV,D2
+           MOVE.B       #0, MEMORREG        *IF MEMORY SHIFT SET MEMORREG TO 0
+           LSR.B        #1, D2
+           BCS          ISLSHIFT
+           BRA          ISASHIFT
+
+          
+ISLSHIFT    *CHECK DIRECTION AND DISPLAY 
+            MOVE.B      SIX_EIGT, D2
+            LSL.B       #6, D2
+            BCS         ISLSL
+            
+            *DISPLAY RIGHT SHIFT            
+            LEA         DISP_LSR,A1
+            MOVE.B      #1,D0
+            TRAP        #15
+            JMP         CHECKMEMORREG
+            
+             
+ISLSL       LEA         DISP_LSL,A1
+            MOVE.B      #1,D0
+            TRAP        #15
+            JMP         CHECKMEMORREG
+                
+
+            *CHECKING DIRECTION AND SIZE
+ISASHIFT    MOVE.B      SIX_EIGT, D2
+            LSL.B       #6, D2
+            BCS         ISASL
+            
+            LEA         DISP_ASR,A1
+            MOVE.B      #1,D0
+            TRAP        #15
+            JMP         CHECKMEMORREG           
+
+       
+            
+ISASL       LEA         DISP_ASL,A1
+            MOVE.B      #1,D0
+            TRAP        #15
+            JMP         CHECKMEMORREG
+
+
+
+
+
+CHECKMEMORREG
+            MOVE.B      MEMORREG, D3            
+            CMP         #0, D3
+            BEQ         S_SIZE
+            SIMHALT 
+            
+S_SIZE      LSL.B       #1, D2
+            BCS         S_L
+            LSL.B       #1, D2
+            BCS         S_W
+            BRA         S_B
+            
+S_L         LEA         DISP_SIZE_L,A1   
+            TRAP        #15
+            SIMHALT
+
+
+S_W         LEA         DISP_SIZE_W,A1   
+            TRAP        #15
+            SIMHALT
+
+
+S_B         LEA         DISP_SIZE_B,A1   
+            TRAP        #15
+            SIMHALT
+    
+            
+            
+            
+                        
+  
+                 
 * Reserved of SIMHALT
-code1111       
+code1111         
   
 
  
@@ -269,8 +598,13 @@ NINE_ELE        DC.B    1
 SIX_EIGT        DC.B    1
 TREE_FIV        DC.B    1
 ZERO_TWO        DC.B    1
+CONDITION       DC.B    1
+MEMORREG        DC.B    1
 
     END    START        ; last line of source
+
+
+
 
 
 
