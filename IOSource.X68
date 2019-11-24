@@ -31,7 +31,7 @@ START:                  ; first instruction of program
 
 ADDLOOP:                        *loops through address and passes word data into D7
     MOVE.W  (A5)+, D7
-    JSR     OPCODE
+    JSR     OPCODE              *Handles all of the first word logic
     CMP.L   A5,A6
     BEQ     DONE
     JMP     ADDLOOP
@@ -149,6 +149,8 @@ OPCODE      LEA         stack,SP        *Load the SP
             MULU        #6,D0          *Form offset
             JSR         0(A0,D0)       *Jump indirect with index
             JMP         ADDLOOP
+            
+*This jump table will jump to a subroutine with the matching first 4 bits in the opcode of the read instruction.
 
 jmp_table   JMP         code0000       *for jumping to a specific instruction
             JMP         code0001
