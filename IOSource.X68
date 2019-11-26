@@ -290,7 +290,6 @@ ISLEA
             MOVE.B      NINE_ELE,D3
             JSR         EA
             JMP         ADDLOOP
-
             RTS
 
 ISMOVEM
@@ -300,7 +299,10 @@ ISMOVEM
 ISNOT
             LEA         DISP_NOT, A1
             TRAP        #15
-            RTS
+            MOVE.B      TREE_FIV,D2
+            MOVE.B      ZERO_TWO,D3
+            JSR         EA
+            JMP         ADDLOOP
 ISJSR
             LEA         DISP_JSR, A1
             TRAP        #15
@@ -383,22 +385,11 @@ code1000
             TRAP        #15
 
             LSR.B       #1, D2               *If first bit is one its word. Second a long
-            BCS         ORW
+            BCS         JUMPW
             LSR.B       #1, D2
-            BCS         ORL
-            BRA         ORB                 *DEFAULT TO BYTE
+            BCS         JUMPL
+            BRA         JUMPB                 *DEFAULT TO BYTE
 
-ORW         LEA         DISP_SIZE_W, A1
-            TRAP        #15
-            RTS
-
-ORL         LEA         DISP_SIZE_L,A1
-            TRAP        #15
-            RTS
-
-ORB         LEA         DISP_SIZE_B,A1
-            TRAP        #15
-            RTS
 
 ISDIV       LEA         DISP_DIVU,A1
             MOVE.B      #1, D0
@@ -439,22 +430,10 @@ code1100
             TRAP        #15
 
             LSR.B       #1, D2               *If first bit is one its word. Second a long
-            BCS         ANDW
+            BCS         JUMPW
             LSR.B       #1, D2
-            BCS         ANDL
-            BRA         ANDB
-
-ANDW        LEA         DISP_SIZE_W, A1
-            TRAP        #15
-            RTS
-
-ANDL        LEA         DISP_SIZE_L,A1
-            TRAP        #15
-            RTS
-
-ANDB        LEA         DISP_SIZE_B,A1
-            TRAP        #15
-            RTS
+            BCS         JUMPL
+            BRA         JUMPB
 
 
 ISMUL       LEA         DISP_MULS,A1
@@ -483,6 +462,8 @@ code1101
             BCS         JUMPL
             BRA         JUMPB
  
+*FOR ADD: If the opmode is < 4 then it is add EA,reg. If opmode >= 4 reg(num),EA
+
 ISADDA      LEA         DISP_ADDA,A1
             MOVE.B      #1, D0
             TRAP        #15
@@ -518,10 +499,8 @@ ADDAW       LEA         DISP_SIZE_W,A1
             MOVE.B      NINE_ELE,D3
             JSR         EA
             JMP         ADDLOOP
-
-
-* Handles shift operations
-code1110
+*A* Handles shift operations
+code1110    
             MOVE.B      SIX_EIGT, D2
             LSL.B       #7, D2
             BCS         CHECKNXTBIT
@@ -579,9 +558,13 @@ ISASL       LEA         DISP_ASL,A1
             JMP         REGORNUM
 
 CHECKMEMORREG
-            MOVE.B      MEMORREG, D3
-            CMP         #0, D3
-            BEQ         S_SIZE
+            CLR.L       D4
+            MOVE.B      MEMORREG, D4
+            MOVE.B      TREE_FIV,D2
+            MOVE.B      ZERO_TWO,D3
+            CMP         #1, D4
+            BEQ         SHIFTEA
+            JSR         S_SIZE 
             RTS
 
 S_SIZE      LSL.B       #1, D2
@@ -623,6 +606,12 @@ SECPART
             MOVE.B      ZERO_TWO,D3
             JSR         EA
             JMP         ADDLOOP
+            
+SHIFTEA     JSR         SIZEW
+            JSR         EA
+            JMP         ADDLOOP
+            
+ 
 
 * Reserved of SIMHALT
 code1111
@@ -636,7 +625,6 @@ JUMPL       JSR         SIZEL
 JUMPB       JSR         SIZEB
             JMP         WHICHONE
 
-*If the opmode is < 4 then it is add EA,reg. If opmode >= 4 reg(num),EA
 WHICHONE    MOVE.B      SIX_EIGT,D6
             CMP         #4,D6
             BLT         EAFIRST
