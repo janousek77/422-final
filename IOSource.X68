@@ -173,6 +173,7 @@ OPCODE      LEA         stack,SP        *Load the SP
             JSR         0(A0,D0)       *Jump indirect with index
             
            * Loading the mode bits into D2, registers into D3
+            JSR         PRINTSPACE
             MOVE.B      TREE_FIV,D2
             MOVE.B      ZERO_TWO,D3
             JSR         EA
@@ -280,6 +281,7 @@ ISLEA
             LEA         DISP_LEA, A1
             TRAP        #15
             
+            JSR         PRINTSPACE
             MOVE.B      TREE_FIV,D2
             MOVE.B      ZERO_TWO,D3
             JSR         EA
@@ -301,6 +303,7 @@ ISNOT
             TRAP        #15
             MOVE.B      TREE_FIV,D2
             MOVE.B      ZERO_TWO,D3
+            JSR         PRINTSPACE
             JSR         EA
             JMP         ADDLOOP
 ISJSR
@@ -474,8 +477,9 @@ ISADDA      LEA         DISP_ADDA,A1
             TRAP        #15
             
             *ADDA HAS DIFFERENT LOGIC FOR EA SO CALLING FROM HERE INSTEAD OF ADDLOOP
-            MOVE.B      TREE_FIV,D2
+ADDAEA      MOVE.B      TREE_FIV,D2
             MOVE.B      ZERO_TWO,D3
+            JSR         PRINTSPACE
             JSR         EA
             LEA         DISP_COMMA,A1
             MOVE.B      #14,D0
@@ -487,18 +491,9 @@ ISADDA      LEA         DISP_ADDA,A1
 
 ADDAW       LEA         DISP_SIZE_W,A1
             TRAP        #15
+            JMP         ADDAEA
  
-            *ADDA HAS DIFFERENT LOGIC FOR EA SO CALLING FROM HERE INSTEAD OF ADDLOOP
-            MOVE.B      TREE_FIV,D2
-            MOVE.B      ZERO_TWO,D3
-            JSR         EA
-            LEA         DISP_COMMA,A1
-            MOVE.B      #14,D0
-            TRAP        #15
-            MOVE.B      #1,D2
-            MOVE.B      NINE_ELE,D3
-            JSR         EA
-            JMP         ADDLOOP
+
 *A* Handles shift operations
 code1110    
             MOVE.B      SIX_EIGT, D2
@@ -564,7 +559,8 @@ CHECKMEMORREG
             MOVE.B      ZERO_TWO,D3
             CMP         #1, D4
             BEQ         SHIFTEA
-            JSR         S_SIZE 
+            JSR         S_SIZE
+            JSR         PRINTSPACE 
             RTS
 
 S_SIZE      LSL.B       #1, D2
@@ -608,6 +604,7 @@ SECPART
             JMP         ADDLOOP
             
 SHIFTEA     JSR         SIZEW
+            JSR         PRINTSPACE
             JSR         EA
             JMP         ADDLOOP
             
@@ -625,7 +622,8 @@ JUMPL       JSR         SIZEL
 JUMPB       JSR         SIZEB
             JMP         WHICHONE
 
-WHICHONE    MOVE.B      SIX_EIGT,D6
+WHICHONE    JSR         PRINTSPACE
+            MOVE.B      SIX_EIGT,D6
             CMP         #4,D6
             BLT         EAFIRST
       
@@ -778,6 +776,11 @@ ADDLONG     LEA         DISP_DOLLAR, A1
             MOVE.B      #15, D0
             MOVE.B      #16, D2
             TRAP        #15
+            RTS
+            
+PRINTSPACE  LEA         DISP_TAB, A1
+            MOVE.B      #14,D0
+            TRAP        #15 
             RTS
             
     SIMHALT             ; halt simulator
