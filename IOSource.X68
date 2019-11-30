@@ -34,6 +34,7 @@ ADDLOOP:                                *loops through address and passes word d
             MOVE.B      #14,D0
             TRAP        #15
             MOVE.L      A5,D1           *take starting address
+            MOVE.W      (A5),A4
             MOVE.B      #15,D0
             MOVE.B      #16,D2
             TRAP        #15
@@ -356,22 +357,34 @@ ISBRA
             JSR         PSTRING 
             JMP         BCC
 
-
 ISLE
             LEA         DISP_BLE,A1
             JSR         PSTRING 
-            JMP         BCC
+            JMP         BSIZE
 
 ISGT
             LEA         DISP_BGT,A1
             JSR         PSTRING 
-            JMP         BCC
+            JMP         BSIZE
 
 ISEQ
             LEA         DISP_BEQ,A1
             JSR         PSTRING 
+
+            
+BSIZE       CMP.B       #$00,D7
+            BEQ         BCCW                      
+            CMP.B       #$FF,D7
+            BEQ         BCCL      
+
+BCCB        JSR         SIZEB  
+            JMP         BCC                  
+BCCW        JSR         SIZEW
+            JMP         BCC
+BCCL        JSR         SIZEL               
             JMP         BCC
 
+    
 * Handles MOVEQ
 code0111
             LEA         DISP_MOVEQ, A1
@@ -406,9 +419,12 @@ code1001
 
 * Unassigned
 code1010
+            JSR         PRINTDATA
+
 
 * Unassigned
 code1011
+            JSR         PRINTDATA
 
 * Handles AND
 code1100
@@ -570,6 +586,14 @@ NUM         CLR         D1
             
 * Reserved of SIMHALT
 code1111
+            
+PRINTDATA   LEA         DISP_DATA,A1
+            JSR         PSTRING
+            JSR         PRINTSPACE
+            MOVE.W      A4,D1
+            JSR         PRINTHEX
+            JMP         ADDLOOP
+            
 
 JUMPW       JSR         SIZEW   
             JMP         WHICHONE
@@ -679,14 +703,14 @@ NOTREG      *NOT A DATA REGISTER
             MOVE.B      D3, D2
             CMP         #1, D2
             BEQ         ADDLONG
+            CMP         #4,D2
+            BEQ         ITSDATA
             * Word direct address
             LEA         DISP_DOLLAR, A1
             JSR         PSTRING   
             MOVE.W      (A5)+,A4
             MOVE.W      A4,D1        
-            MOVE.B      #15, D0
-            MOVE.B      #16, D2
-            TRAP        #15
+            JSR         PRINTHEX
             RTS
             
             * long direct address
@@ -694,10 +718,31 @@ ADDLONG     LEA         DISP_DOLLAR, A1
             JSR         PSTRING    
             MOVE.L      (A5)+,A4
             MOVE.L      A4,D1  
-            MOVE.B      #15, D0
-            MOVE.B      #16, D2
-            TRAP        #15
+            JSR         PRINTHEX
             RTS
+            
+ITSDATA     MOVE.B      SIX_EIGT,D1
+            LSR.B       #2,D1
+            BCS         LONGDATA
+
+WORDATA     LEA         DISP_HASH, A1
+            JSR         PSTRING  
+            LEA         DISP_DOLLAR, A1
+            JSR         PSTRING    
+            MOVE.W      (A5)+,A4
+            MOVE.W      A4,D1  
+            JSR         PRINTHEX
+            RTS
+            
+LONGDATA    LEA         DISP_HASH, A1
+            JSR         PSTRING  
+            LEA         DISP_DOLLAR, A1
+            JSR         PSTRING    
+            MOVE.L      (A5)+,A4
+            MOVE.L      A4,D1  
+            JSR         PRINTHEX
+            RTS
+            
             
 PRINTSPACE  LEA         DISP_TAB, A1
             JSR         PSTRING 
@@ -814,20 +859,15 @@ EAFIRST
             JMP         ADDLOOP
             
 
-BCC              
+BCC         JSR         PRINTSPACE     
             MOVE.W      A5,A3        
             CMP.B       #$00,D7
-            BEQ         DIS16               *16-bit Displacement
+            BEQ         EVAL1632            *16-bit Displacement
                
             CMP.B       #$FF,D7
-            BEQ         DIS32               *32-bit Displacement
-                
-                                            *8-bit Displacement
-            LEA         DISP_SIZE_B,A1      
-            JSR         PSTRING                 
-            JSR         PRINTSPACE
-                
-            JSR         CHECK0TO7        
+            BEQ         EVAL1632            *32-bit Displacement
+                                                                       
+            JSR         CHECK0TO7           *8-bit Displacement
             CMP.B       $80,D7              *Check if the number is a negative 2's complement byte
             BGE         NOTNEG
             JSR         NEGDIS              *If so, handle it appropriately.
@@ -845,16 +885,6 @@ NEGDIS      MOVE.B      D7,D2
             SUB.B       D2,D7               *Apply displacement to address pointer to get branch location
             RTS        
 
-DIS16           
-            LEA         DISP_SIZE_W,A1      *Store the console message for output.
-            JSR         PSTRING                 
-            JSR         PRINTSPACE
-            JSR         EVAL1632
-                
-DIS32       LEA         DISP_SIZE_L,A1      *Store the console message for output.
-            JSR         PSTRING                 
-            JSR         PRINTSPACE
-
 EVAL1632    MOVE.W      (A5)+,D7            *Copy the current instruction pointer location               
             JSR         CHECKNEG 
 ADD1632     MOVE.W      A3,D2
@@ -868,8 +898,7 @@ CHECKNEG    MOVE.W      D7,D2
             MULS        #-1,D2
             MOVE.W      A3,D7
             SUB.W       D2,D7
-            JMP         BCCPRINT
-                
+            JMP         BCCPRINT               
                 
 CHECK0TO7   MOVE.W      D7,D2               *Reload full opcode for evaluation
             LSL.W       #8,D2               *Truncate up to bit 7
@@ -1111,7 +1140,7 @@ DISP_BLE        DC.B    'BLE',0
 DISP_JSR        DC.B    'JSR',0
 DISP_RTS        DC.B    'RTS',0
 DISP_BRA        DC.B    'BRA',0
-DISP_INVALID    DC.B    'DATA',0         *REMINDER: Label changed without changing name
+DISP_DATA       DC.B    'DATA',0         *REMINDER: Label changed without changing name
 DISP_INVALIDEA  DC.B    'BadEA',0
 DISP_TAB        DC.B    '       ',0
 
