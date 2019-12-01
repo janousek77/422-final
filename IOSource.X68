@@ -212,20 +212,20 @@ code0000
 code0001
             LEA         DISP_MOVE,A1
             JSR         PSTRING 
-            CMP.B       #1,SIX_EIGT      *checking if bits 6-8 equal one if yes its a movea
-            BEQ         MOVEAB
+            JSR         MOVECHECK
             BRA         SIZEB
 
 MOVEAB      LEA         DISP_MOVE_A,A1
             JSR         PSTRING 
             RTS
- 
+            
 * Handles MOVEA.L, MOVE.L
 code0010
             LEA         DISP_MOVE,A1
             JSR         PSTRING 
             CMP.B       #1,SIX_EIGT
             BEQ         MOVEAL
+            JSR         MOVECHECK
             BRA         MOVEL
 
 MOVEAL      LEA         DISP_MOVE_A,A1
@@ -242,6 +242,7 @@ code0011
             JSR         PSTRING 
             CMP.B       #1,SIX_EIGT
             BEQ         MOVEAW
+            JSR         MOVECHECK
             BRA         MOVEW
 
 MOVEAW      LEA         DISP_MOVE_A,A1
@@ -294,6 +295,7 @@ MLONG       JSR         SIZEL
 ISNOT
             LEA         DISP_NOT, A1
             JSR         PSTRING 
+            JSR         CHECKNOT
             MOVE.B      TREE_FIV,D2
             MOVE.B      ZERO_TWO,D3
             JSR         PRINTSPACE
@@ -303,6 +305,7 @@ ISJSR
             LEA         DISP_JSR, A1
             JSR         PSTRING 
             JSR         PRINTSPACE
+            JSR         CHECKJSR
             MOVE.B      TREE_FIV,D2
             MOVE.B      ZERO_TWO,D3
             JSR         EA
@@ -315,13 +318,14 @@ ISRTS
             LEA         DISP_RTS, A1
             JSR         PSTRING 
             JMP         ADDLOOP
-
+            
 * Handles ADDQ
 code0101
             LEA         DISP_ADDQ,A1
             MOVE.B      #14,D0
             TRAP        #15
 
+            JSR         CHECKADDQ
             MOVE.B      SIX_EIGT,D0
             LSR.B       #1,D0                *If first bit is one its word. Second a long
             BCS         QW
@@ -391,12 +395,13 @@ code0111
             JSR         PSTRING 
             JMP         MQEA
 
-* Handles OR, DIV operations
+* Handles OR operations
 code1000
             CLR         D0
             LEA         DISP_OR, A1
             JSR         PSTRING
 
+            JSR         CHECKOR
             MOVE.B      SIX_EIGT,D2
             LSR.B       #1,D2               *If first bit is one its word. Second a long
             BCS         JUMPW
@@ -408,6 +413,7 @@ code1000
 code1001
             LEA         DISP_SUB,A1
             JSR         PSTRING
+            JSR         CHECKSUB
 
             MOVE.B      SIX_EIGT,D0
             LSR.B       #1,D0                *If first bit is one its word. Second a long
@@ -450,7 +456,8 @@ code1101
 
             CLR         D0
             LEA         DISP_ADD,A1
-            JSR         PSTRING 
+            JSR         PSTRING
+            JSR         CHECKAND 
 
             LSR.B       #1,D2               *If first bit is one its word. Second a long
             BCS         JUMPW       
@@ -473,7 +480,7 @@ ADDAW       LEA         DISP_SIZE_W,A1
             JSR         PSTRING 
             JMP         ADDAEA
 
-*A* Handles shift operations
+*Handles shift and rotate operations
 code1110    
             MOVE.B      SIX_EIGT,D2
             LSL.B       #7,D2
@@ -619,6 +626,13 @@ SIZEB       LEA         DISP_SIZE_B,A1
 PSTRING     MOVE.B      #14,D0
             TRAP        #15
             RTS
+            
+BADEA       JSR         PRINTSPACE
+            LEA         DISP_INVALIDEA,A1
+            JSR         PSTRING
+            JMP         ADDLOOP
+            
+OK          RTS
 
 *-----------------------------------------------------------
 * Title      : EA
@@ -818,8 +832,7 @@ MQEA
             JMP         ADDLOOP         
 
 *ARITHMETIC AND LOGICAL SHIFTS
-SECPART     
-            LEA         DISP_COMMA,A1
+SECPART     LEA         DISP_COMMA,A1
             JSR         PSTRING 
             MOVE.B      #0,D2
             MOVE.B      ZERO_TWO,D3
@@ -828,6 +841,7 @@ SECPART
             
 SHIFTEA     JSR         SIZEW
             JSR         PRINTSPACE
+            JSR         CHECKSHIFT
             JSR         EA
             JMP         ADDLOOP            
 
@@ -912,6 +926,7 @@ MOVEMEA     MOVE.W      (A5)+,D4        *Moves range word from register to D4
             BCS         MEMTOREG        *If the carry flag is set its mem->reg
 
             *Reg->mem
+            JSR         REGMEMCHECK
             MOVE.B      TREE_FIV,D2     *If not it defaults to reg->mem. Check mode for post dec
             CMP         #4,D2
             BEQ         REVMASK         *If mode indicates post dec then we need to print the reversed mask
@@ -924,7 +939,8 @@ MOVEMEA     MOVE.W      (A5)+,D4        *Moves range word from register to D4
             JSR         EA
             JMP         ADDLOOP                                     
                 
-MEMTOREG    MOVE.B      TREE_FIV,D2
+MEMTOREG    JSR         MEMREGCHECK
+            MOVE.B      TREE_FIV,D2
             MOVE.B      ZERO_TWO,D3
             JSR         EA
             LEA         DISP_COMMA,A1         
@@ -1092,7 +1108,148 @@ PDASH       LEA         DISP_MINUS,A1
 
 PSLASH      LEA         DISP_SLASH,A1
             JSR         PSTRING
-            RTS                                      
+            RTS           
+
+REGMEMCHECK MOVE.B      TREE_FIV,D2     *
+            MOVE.B      ZERO_TWO,D3
+            CMP         #2,D2
+            BEQ         OK
+            CMP         #4,D2
+            BEQ         OK
+            CMP         #7,D2
+            BNE         BADEA                          
+            CMP         #2,D3
+            BLT         OK
+            BRA         BADEA
+
+MEMREGCHECK MOVE.B      TREE_FIV,D2     *
+            MOVE.B      ZERO_TWO,D3
+            CMP         #2,D2
+            BEQ         OK
+            CMP         #3,D2
+            BEQ         OK
+            CMP         #7,D2
+            BNE         BADEA                          
+            CMP         #2,D3
+            BLT         OK
+            BRA         BADEA                          
+
+MOVECHECK   MOVE.B      NINE_ELE,D2
+            MOVE.B      SIX_EIGT,D3
+            CMP.B       #1,D3
+            BEQ         BADEA
+            CMP.B       #7,D3
+            BNE         OK
+            CMP.B       #2,D2
+            BGE         BADEA
+            RTS
+            
+CHECKNOT    MOVE.B      TREE_FIV,D2
+            MOVE.B      ZERO_TWO,D3
+            CMP         #1,D2
+            BEQ         BADEA
+            CMP         #7,D2
+            BNE         OK
+            CMP         #2,D3
+            BGE         BADEA
+            RTS
+
+CHECKJSR    MOVE.B      TREE_FIV,D2
+            MOVE.B      ZERO_TWO,D3
+            CMP         #2,D2
+            BEQ         OK
+            CMP         #7,D2
+            BNE         BADEA                          
+            CMP         #2,D3
+            BLT         OK
+            BRA         BADEA
+            
+CHECKADDQ   MOVE.B      TREE_FIV,D2
+            MOVE.B      ZERO_TWO,D3
+            CMP         #7,D2
+            BNE         OK
+            CMP         #2,D3
+            BGE         BADEA
+            RTS
+            
+CHECKOR     MOVE.B      SIX_EIGT,D6
+            CMP         #4,D6
+            BLT         ORFIRST
+            
+            MOVE.B      TREE_FIV,D2
+            MOVE.B      ZERO_TWO,D3
+            CMP         #0,D2
+            BEQ         BADEA
+            CMP         #1,D2
+            BEQ         BADEA
+            CMP         #7,D2
+            BNE         OK                          
+            CMP         #2,D3
+            BGE         BADEA
+            RTS
+
+ORFIRST     MOVE.B      TREE_FIV,D2
+            MOVE.B      ZERO_TWO,D3
+            CMP         #1,D2
+            BEQ         BADEA
+            RTS            
+
+CHECKSUB    MOVE.B      SIX_EIGT,D6
+            CMP         #4,D6
+            BLT         SUBFIRST
+            
+            MOVE.B      TREE_FIV,D2
+            MOVE.B      ZERO_TWO,D3
+            CMP         #0,D2
+            BEQ         BADEA
+            CMP         #1,D2
+            BEQ         BADEA
+            CMP         #7,D2
+            BNE         OK                          
+            CMP         #2,D3
+            BGE         BADEA
+            RTS
+
+SUBFIRST    JMP         OK   
+
+CHECKAND    MOVE.B      SIX_EIGT,D6
+            CMP         #4,D6
+            BLT         ANDFIRST
+            
+            MOVE.B      TREE_FIV,D2
+            MOVE.B      ZERO_TWO,D3
+            CMP         #0,D2
+            BEQ         BADEA
+            CMP         #1,D2
+            BEQ         BADEA
+            CMP         #7,D2
+            BNE         OK                          
+            CMP         #2,D3
+            BGE         BADEA
+            RTS
+
+ANDFIRST    MOVE.B      TREE_FIV,D2
+            MOVE.B      ZERO_TWO,D3
+            CMP         #1,D2
+            BEQ         BADEA
+            RTS 
+
+CHECKSHIFT  MOVE.B      MEMORREG,D1
+            CMP         #1,D1
+            BNE         OK
+            MOVE.B      TREE_FIV,D2
+            MOVE.B      ZERO_TWO,D3
+            CMP         #0,D2
+            BEQ         BADEA
+            CMP         #1,D2
+            BEQ         BADEA
+            CMP         #7,D2
+            BNE         OK                          
+            CMP         #2,D3
+            BGE         BADEA
+            RTS 
+      
+            
                 
 CLEARVARS   CLR.L       TWEL_FIF
             CLR.L       NINE_ELE

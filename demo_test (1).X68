@@ -1,58 +1,58 @@
-*****************************
-*
+****************************
+
 * demo_test.X68
-*
+
 * Created 12/05/2018
-*
+
 * Test program for CSS 422 Disassembler Project Demo
-*
-*****************************
+
+****************************
 
 start		EQU	$00007000	* ORG and END address
 
 * ORG the program so that it straddles the address boundary $00007FFF to $00008000
 
 		ORG	START
-*    BEQ.W       label1
-*    RTS
-*    NOP
-*    RTS
-*    ADD.B       D2,D3
-*    ADD.B       D3,(A1) 
-*    ADD.B       D4,(A1)+ 
-*    ADD.B       D5,-(A1) 
-*    ADD.B       (A3),D1
-*    ADD.B       (A4)+,D1
-*    ADD.B       -(A5),D1
-*    ADD.W       D6,D2 
-*    ADD.W       D7,(A1)
-*    ADD.W       D1,(A1)+
-*    ADD.W       D0,-(A1)
-*    ADD.W       (A1),D1
-*    ADD.W       (A2)+,D1
-*    ADD.W       -(A3),D1
-*    ADD.L       D1,D2 
-*    ADD.L       D2,(A1)
-*    ADD.L       D3,(A1)+
-*    ADD.L       D4,-(A1)
-*    ADD.L       (A4),D1
-*    ADD.L       (A5)+,D1
-*    ADD.L       -(A6),D1
-*    ADDA.W      D5,A2
-*    ADDA.W      (A0),A2
-*    ADDA.W      (A1)+,A2
-*    ADDA.W      -(A2),A2
-*    ADDA.L      D6,A2 
-*    ADDA.L      (A2),A2
-*    ADDA.L      (A3)+,A2
-*    ADDA.L      -(A4),A2
-*    ADDA.W      $12,A2
-*    ADDA.W      $1234,A2
-*    ADDA.W      $12345678,A2
-*    ADDA.W      #$1234,A2
-*    ADDA.L      $12,A2
-*    ADDA.L      $1234,A2
-*    ADDA.L      $12345678,A2
+    BEQ.W       label1
+    RTS
+    NOP
+    RTS
+    ADD.B       D2,D3
+    ADD.B       D3,(A1) 
+    ADD.B       D4,(A1)+ 
+    ADD.B       D5,-(A1) 
+    ADD.B       (A3),D1
+    ADD.B       (A4)+,D1
+    ADD.B       -(A5),D1
+    ADD.W       D6,D2 
+    ADD.W       D7,(A1)
+    ADD.W       D1,(A1)+
+    ADD.W       D0,-(A1)
+    ADD.W       (A1),D1
+    ADD.W       (A2)+,D1
+    ADD.W       -(A3),D1
+    ADD.L       D1,D2 
+    ADD.L       D2,(A1)
+    ADD.L       D3,(A1)+
+    ADD.L       D4,-(A1)
+    ADD.L       (A4),D1
+    ADD.L       (A5)+,D1
+    ADD.L       -(A6),D1
+    ADDA.W      D5,A2
+    ADDA.W      (A0),A2
+    ADDA.W      (A1)+,A2
+    ADDA.W      -(A2),A2
+    ADDA.L      D6,A2 
+    ADDA.L      (A2),A2
+    ADDA.L      (A3)+,A2
+    ADDA.L      -(A4),A2
+    ADDA.W      $12,A2
+    ADDA.W      $1234,A2
+    ADDA.W      $12345678,A2
+    ADDA.W      #$1234,A2
+    ADDA.L      $12,A2
+    ADDA.L      $1234,A2
+    ADDA.L      $12345678,A2
     ADDA.L      #$12345678,A2 
     ADDA.W      #$1234,A2 
     ADDQ.B      #1,D5 
@@ -143,9 +143,9 @@ start		EQU	$00007000	* ORG and END address
     LSR.L       D4,D2
     LSL.B       #1,D3
     LSR.B       #1,D4 
-    MOVE.B      D0,D1
+    MOVE.B      D0,D1 *
     MOVE.B      D1,(A0)
-    MOVE.B      D2,(A1)+
+    MOVE.B      D2,(A1)+ *
     MOVE.B      D3,-(A2) 
     MOVE.B      (A3),D4
     MOVE.B      (A4),(A5)
@@ -156,7 +156,7 @@ start		EQU	$00007000	* ORG and END address
     MOVE.B      (A3)+,(A3)+
     MOVE.B      (A4)+,-(A5)
     MOVE.B      -(A6),D0
-    MOVE.B      -(A0),(A1)
+    MOVE.B      -(A0),(A1) *
     MOVE.B      -(A1),(A2)+
     MOVE.B      -(A2),-(A3)
     MOVE.W      D0,D1
@@ -214,8 +214,8 @@ start		EQU	$00007000	* ORG and END address
     NOT         -(A2)
     NOT         (A3)+
     OR.B        D5,D2    
-    OR.B        D6,(A1)
-    OR.B        D0,(A1)+
+    OR.B        D6,(A1) *
+    OR.B        D0,(A1)+        *
     OR.B        D1,-(A1)
     OR.B        (A6),D1
     OR.B        (A0)+,D1
