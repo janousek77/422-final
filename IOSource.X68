@@ -6,65 +6,52 @@
 *-----------------------------------------------------------
     ORG    $1000
 START:                  
-            LEA         STARTADDMESS,A1 *take starting address
+            LEA         STARTADDMESS,A1 *message to ask for starting address
             JSR         PSTRING 
             MOVE.B      #2,D0
             TRAP        #15
 
-            JSR         CHECKVALUES
-            MOVE.L      A1,BEGIN
+            JSR         CHECKVALUES     *subroutine to make sure its a valid address
+            MOVE.L      A1,BEGIN        *variable that holds the started address value
             CLR.L       D4
 
-            LEA         ENDADDMESS,A1   *take starting address
+            LEA         ENDADDMESS,A1   *message to ask for ending address
             JSR         PSTRING 
             MOVE.B      #2,D0
             TRAP        #15
 
-            JSR         CHECKVALUES
-            MOVE.L      A1,LAST
+            JSR         CHECKVALUES     *subroutine to make sure its a valid address
+            MOVE.L      A1,LAST         *variable that holds the ending address value
             MOVE.L      BEGIN,A5
             MOVE.L      LAST,A6
 
 ADDLOOP:                                *loops through address and passes word data into D7
-            CMP.L       A5,A6
-            BLE         DONE
-            JSR         CLEAR_REGS
+            CMP.L       A6,A5           *compares the current address with ending address
+            BGT         DONE            *breaks if end is less than beginning
+            JSR         CLEAR_REGS      *subroutine to clear all data registers
             
             LEA         DISP_NL,A1
-            MOVE.B      #14,D0
-            TRAP        #15
+            JSR         PSTRING         *print string subroutine
             MOVE.L      A5,D1           *take starting address
-            MOVE.W      (A5),A4
-            MOVE.B      #15,D0
-            MOVE.B      #16,D2
-            TRAP        #15
-    
+            MOVE.W      (A5),A4         *makes a copy of whats in current address register
+            JSR         PRINTHEX        *print hex subroutine
+            
             LEA         DISP_TAB,A1
             JSR         PSTRING 
     
             MOVE.W      (A5)+,D7
             JSR         OPCODE          *Handles all of the first word logic
-            JSR         CLEARVARS
+            JSR         CLEARVARS       *clears all variables
             JMP         ADDLOOP
 
-CLEAR_REGS  CLR.L         D0
-            CLR.L         D1
-            CLR.L         D2
-            CLR.L         D3
-            CLR.L         D4
-            CLR.L         D5
-            CLR.L         D6
-            CLR.L         D7
-            RTS
 DONE
     SIMHALT
 
 
-CHECKVALUES                            *not less than 1 or greater than 8
-            CMP.L       #1,D1          *if the address length is less than 1, error
+CHECKVALUES CMP.L       #1,D1          *if the address length is less than 1, print error
             BLT         ERRADD2
 
-            CMP.L       #8,D1          *if the address length is greater than 8, error
+            CMP.L       #8,D1          *if the address length is greater than 8, print error
             BGT         ERRADD2
             JSR         CONVERTLOOP
 
@@ -74,29 +61,26 @@ CHECKVALUES                            *not less than 1 or greater than 8
             RTS
 
 
-INVALID
-            LEA         ERRADD,A1      *take starting address
+INVALID     LEA         ERRADD,A1      *print error message
             MOVE.B      #14,D0
             TRAP        #15
             JMP         START
 
-CONVERTLOOP
-            CMP         #0,D1           *IS LOOP DONE?
+CONVERTLOOP CMP         #0,D1           *is loop done?
             BEQ         CONVDONE
-            MOVE.B      (A1)+,D2        *COPY BYTE AND INCREMENT REGISTER
-            JSR         CONVERT         *CONVERT TO HEX
-            LSL.L       #4,D4           *MAKE ROOM FOR NEXT BYTE
+            MOVE.B      (A1)+,D2        *copy byte and increment register
+            JSR         CONVERT         *convert to hex
+            LSL.L       #4,D4           *make room for next byte
             ADD.B       D2,D4
-            SUBQ.B      #1,D1           *DECREMENT COUNTER
+            SUBQ.B      #1,D1           *decrement counter
             JMP         CONVERTLOOP
 
-CONVERT
-            CMP.B       #$39,D2         *compare 39 ASCII #9
+CONVERT     CMP.B       #$39,D2         *compare 39 ASCII #9
             BGT         LETTER          *if greater than it is a letter
-            SUB.B       #$30,D2         *Subtract 30 for HEX number
+            SUB.B       #$30,D2         *subtract 30 for HEX number
             RTS
 
-LETTER      SUB.B       #$37,D2         *Subtract 37 for HEX letter
+LETTER      SUB.B       #$37,D2         *subtract 37 for HEX letter
             RTS
 
 CONVDONE    MOVE.L      D4,D5
@@ -111,81 +95,80 @@ CONVDONE    MOVE.L      D4,D5
 *-----------------------------------------------------------
 stack       EQU         $A000
 
-OPCODE      LEA         stack,SP        *Load the SP
-            LEA         jmp_table,A0    *Index into the table
-*            CLR.L       D0              *Zero it
+OPCODE      LEA         stack,SP        *load the SP
+            LEA         jmp_table,A0    *index into the table
             
             *For bits 12 -> 15
-            MOVE.W      D7,D0           *We'll play with it here
-            MOVE.B      #12,D1          *Shift 12 bits to the right
-            LSR.W       D1,D0           *Move the bits
+            MOVE.W      D7,D0           *we'll play with it here
+            MOVE.B      #12,D1          *shift 12 bits to the right
+            LSR.W       D1,D0           *move the bits
             MOVE.B      D0,TWEL_FIF
 
             *For bits 9 -> 11
-            CLR.L       D0              *Zero it
-            MOVE.W      D7,D0           *We'll play with it here
-            MOVE.B      #4,D1           *Shift 12 bits to the right
-            LSL.W       D1,D0           *Move the bits
-            MOVE.B      #13,D1          *Shift 12 bits to the right
-            LSR.W       D1,D0           *Move the bits
+            CLR.L       D0              *zero it
+            MOVE.W      D7,D0           *we'll play with it here
+            MOVE.B      #4,D1           *shift 12 bits to the right
+            LSL.W       D1,D0           *move the bits
+            MOVE.B      #13,D1          *shift 12 bits to the right
+            LSR.W       D1,D0           *move the bits
             MOVE.B      D0,NINE_ELE
 
             *For bits 9 -> 12
-            CLR.L       D0              *Zero it
-            MOVE.W      D7,D0           *We'll play with it here
-            MOVE.B      #4,D1           *Shift 12 bits to the right
-            LSL.W       D1,D0           *Move the bits
-            MOVE.B      #12,D1          *Shift 12 bits to the right
-            LSR.W       D1,D0           *Move the bits
+            CLR.L       D0              *zero it
+            MOVE.W      D7,D0           *we'll play with it here
+            MOVE.B      #4,D1           *shift 12 bits to the right
+            LSL.W       D1,D0           *move the bits
+            MOVE.B      #12,D1          *shift 12 bits to the right
+            LSR.W       D1,D0           *move the bits
             MOVE.B      D0,CONDITION
 
             *For bits 6 -> 8
-            CLR.L       D0              *Zero it
-            MOVE.W      D7,D0           *We'll play with it here
-            MOVE.B      #7,D1           *Shift 12 bits to the right
-            LSL.W       D1,D0           *Move the bits
-            MOVE.B      #13,D1          *Shift 12 bits to the right
-            LSR.W       D1,D0           *Move the bits
+            CLR.L       D0              *zero it
+            MOVE.W      D7,D0           *we'll play with it here
+            MOVE.B      #7,D1           *shift 12 bits to the right
+            LSL.W       D1,D0           *move the bits
+            MOVE.B      #13,D1          *shift 12 bits to the right
+            LSR.W       D1,D0           *move the bits
             MOVE.B      D0,SIX_EIGT
 
             *For bits 3 -> 5
-            CLR.L       D0              *Zero it
-            MOVE.W      D7,D0           *We'll play with it here
-            MOVE.B      #10,D1          *Shift 12 bits to the right
-            LSL.W       D1,D0           *Move the bits
-            MOVE.B      #13,D1          *Shift 12 bits to the right
-            LSR.W       D1,D0           *Move the bits
+            CLR.L       D0              *zero it
+            MOVE.W      D7,D0           *we'll play with it here
+            MOVE.B      #10,D1          *shift 12 bits to the right
+            LSL.W       D1,D0           *move the bits
+            MOVE.B      #13,D1          *shift 12 bits to the right
+            LSR.W       D1,D0           *move the bits
             MOVE.B      D0,TREE_FIV
 
             *For bits 0 -> 2
-            CLR.L       D0              *Zero it
-            MOVE.W      D7,D0           *We'll play with it here
-            MOVE.B      #13,D1          *Shift 12 bits to the right
-            LSL.W       D1,D0           *Move the bits
-            MOVE.B      #13,D1          *Shift 12 bits to the right
-            LSR.W       D1,D0           *Move the bits
+            CLR.L       D0              *zero it
+            MOVE.W      D7,D0           *we'll play with it here
+            MOVE.B      #13,D1          *shift 12 bits to the right
+            LSL.W       D1,D0           *move the bits
+            MOVE.B      #13,D1          *shift 12 bits to the right
+            LSR.W       D1,D0           *move the bits
             MOVE.B      D0,ZERO_TWO
 
             *jump table section takes bits 12->15 and jumps to appropriate subroutine            
             CLR         D0
             CLR         D1            
             MOVE.B      TWEL_FIF,D0
-            MULU        #6,D0          *Form offset
-            JSR         0(A0,D0)       *Jump indirect with index
+            MULU        #6,D0           *form offset
+            JSR         0(A0,D0)        *jump indirect with index
             
            * Loading the mode bits into D2, registers into D3
-            JSR         PRINTSPACE
-            MOVE.B      TREE_FIV,D2
+            JSR         PRINTSPACE      *returns from individual opcode 
+            MOVE.B      TREE_FIV,D2     
             MOVE.B      ZERO_TWO,D3
             JSR         EA
             
             * Currently loading the mode into D2, registers into D3 NEED TO ADD CHECK BEFORE JUMPING TO EA
-            LEA         DISP_COMMA,A1
+            LEA         DISP_COMMA,A1   *prints comma
             JSR         PSTRING 
-            MOVE.B      SIX_EIGT,D2
+            MOVE.B      SIX_EIGT,D2     
             MOVE.B      NINE_ELE,D3
             JSR         EA
-            JMP         ADDLOOP
+            JMP         ADDLOOP         *return to IO addloop
             
 *This jump table will jump to a subroutine with the matching first 4 bits in the opcode of the read instruction.
 
@@ -212,23 +195,19 @@ code0000
 code0001
             LEA         DISP_MOVE,A1
             JSR         PSTRING 
-            JSR         MOVECHECK
+            JSR         MOVECHECK       *checks whether ea is valid or not
             BRA         SIZEB
-
-MOVEAB      LEA         DISP_MOVE_A,A1
-            JSR         PSTRING 
-            RTS
             
 * Handles MOVEA.L, MOVE.L
 code0010
             LEA         DISP_MOVE,A1
             JSR         PSTRING 
-            CMP.B       #1,SIX_EIGT
-            BEQ         MOVEAL
-            JSR         MOVECHECK
-            BRA         MOVEL
+            CMP.B       #1,SIX_EIGT     *checks for whether opcode is move or movea
+            BEQ         MOVEAL          
+            JSR         MOVECHECK       *checks whether ea is valid or not
+            BRA         MOVEL           *continues
 
-MOVEAL      LEA         DISP_MOVE_A,A1
+MOVEAL      LEA         DISP_MOVE_A,A1  *prints the "a" for movea
             JSR         PSTRING 
 
 MOVEL       LEA         DISP_SIZE_L,A1
@@ -240,9 +219,9 @@ MOVEL       LEA         DISP_SIZE_L,A1
 code0011
             LEA         DISP_MOVE,A1
             JSR         PSTRING 
-            CMP.B       #1,SIX_EIGT
-            BEQ         MOVEAW
-            JSR         MOVECHECK
+            CMP.B       #1,SIX_EIGT     *checks for whether opcode is move or movea
+            BEQ         MOVEAW      
+            JSR         MOVECHECK       *checks whether ea is valid or not
             BRA         MOVEW
 
 MOVEAW      LEA         DISP_MOVE_A,A1
@@ -252,28 +231,29 @@ MOVEW       LEA         DISP_SIZE_W,A1
             JSR         PSTRING 
             RTS
 
+* Handles LEA,MOVEM,NOT,JSR,NOP,RTS
 code0100
             MOVE.B      #1,D0
 
             MOVE.B      CONDITION,D3
             LSR.B       #1,D3
-            BCS         ISLEA           *JUMPS TO LEA OPCODE
+            BCS         ISLEA           *jumps to lea opcode
 
             LSR.B       #1,D3
-            BCC         ISMOVEM         *JUMPS TO MOVEM OPCODE
+            BCC         ISMOVEM         *jumps to movem opcode
 
             LSL.B       #7,D3
-            BCC         ISNOT           *JUMPS TO NOT OPCODE
+            BCC         ISNOT           *jumps to not opcode
 
             MOVE.B      SIX_EIGT,D3
             LSR.B       #2, D3
-            BCS         ISJSR           *JUMPS TO JSR OPCODE
+            BCS         ISJSR           *jumps to jsr opcode
 
             MOVE.B      ZERO_TWO,D3
             CMP.B       #1,D3
-            BEQ         ISNOP           *JUMPS TO NOP OPCODE
+            BEQ         ISNOP           *jumps to nop opcode
 
-            BRA         ISRTS           *DEFAULTS TO RTS
+            BRA         ISRTS           *defaults to rts opcode
 
 ISLEA
             LEA         DISP_LEA, A1
@@ -281,34 +261,34 @@ ISLEA
             JMP         LEAEA
 
 ISMOVEM
-            LEA         DISP_MOVEM, A1
+            LEA         DISP_MOVEM, A1  
             JSR         PSTRING 
-            MOVE.B      SIX_EIGT,D2
+            MOVE.B      SIX_EIGT,D2     *Checks size
             LSR.B       #1,D2
             BCS         MLONG
             JSR         SIZEW
 MMCON       JSR         PRINTSPACE
-            JSR         MOVEMEA
+            JSR         MOVEMEA         *EA handling subroutine
 MLONG       JSR         SIZEL
             JMP         MMCON
 
 ISNOT
             LEA         DISP_NOT, A1
             JSR         PSTRING 
-            JSR         CHECKNOT
+            JSR         CHECKNOT        *checks whether ea is valid
             MOVE.B      TREE_FIV,D2
             MOVE.B      ZERO_TWO,D3
             JSR         PRINTSPACE
-            JSR         EA
+            JSR         EA              *general ea subroutine
             JMP         ADDLOOP
 ISJSR
             LEA         DISP_JSR, A1
             JSR         PSTRING 
             JSR         PRINTSPACE
-            JSR         CHECKJSR
+            JSR         CHECKJSR        *checks whether ea is valid
             MOVE.B      TREE_FIV,D2
             MOVE.B      ZERO_TWO,D3
-            JSR         EA
+            JSR         EA              *general ea subroutine
             JMP         ADDLOOP
 ISNOP
             LEA         DISP_NOP, A1
@@ -322,16 +302,15 @@ ISRTS
 * Handles ADDQ
 code0101
             LEA         DISP_ADDQ,A1
-            MOVE.B      #14,D0
-            TRAP        #15
+            JSR         PSTRING
 
             JSR         CHECKADDQ
             MOVE.B      SIX_EIGT,D0
-            LSR.B       #1,D0                *If first bit is one its word. Second a long
+            LSR.B       #1,D0           *if first bit is one its word. Second a long
             BCS         QW
             LSR.B       #1,D0
             BCS         QL               
-            BRA         QB                   *IF NONE OF THESE WE DEFAULT TO ADDQ.B
+            BRA         QB              *if none of these we default to ADDQ.B
             
 QW          JSR         SIZEW
             JMP         QEA
@@ -340,9 +319,9 @@ QL          JSR         SIZEL
 QB          JSR         SIZEB  
             JMP         QEA                   
 
-* Handles Bcc operations
+* Handles BCC operations
 code0110
-            MOVE.B      CONDITION,D2
+            MOVE.B      CONDITION,D2    *checks which condition code it is
             CMP         #0,D2
             BEQ         ISBRA
             CMP         #15,D2
@@ -376,7 +355,7 @@ ISEQ
             JSR         PSTRING 
 
             
-BSIZE       CMP.B       #$00,D7
+BSIZE       CMP.B       #$00,D7         *size based on displacement subroutine
             BEQ         BCCW                      
             CMP.B       #$FF,D7
             BEQ         BCCL      
@@ -393,7 +372,7 @@ BCCL        JSR         SIZEL
 code0111
             LEA         DISP_MOVEQ, A1
             JSR         PSTRING 
-            JMP         MQEA
+            JMP         MQEA            *moveq ea subroutine
 
 * Handles OR operations
 code1000
@@ -403,34 +382,34 @@ code1000
 
             JSR         CHECKOR
             MOVE.B      SIX_EIGT,D2
-            LSR.B       #1,D2               *If first bit is one its word. Second a long
+            LSR.B       #1,D2           *if first bit is one its word. Second a long
             BCS         JUMPW
             LSR.B       #1,D2
             BCS         JUMPL
-            BRA         JUMPB                *DEFAULT TO BYTE
+            BRA         JUMPB           *default to byte
        
 * Handles SUB
 code1001
             LEA         DISP_SUB,A1
             JSR         PSTRING
-            JSR         CHECKSUB
+            JSR         CHECKSUB        *checks whether ea is valid
 
             MOVE.B      SIX_EIGT,D0
-            LSR.B       #1,D0                *If first bit is one its word. Second a long
+            LSR.B       #1,D0           *If first bit is one its word. Second a long
             BCS         JUMPW      
             LSR.B       #1,D0
             BCS         JUMPL      
             BRA         JUMPB      
           
 
-* Unassigned
+* Unassigned data
 code1010
-            JSR         PRINTDATA
+            JSR         PRINTDATA       *prints data for anything we didn't cover in specs for project
 
-
-* Unassigned
+* Unassigned data
 code1011
-            JSR         PRINTDATA
+            JSR         PRINTDATA       *prints data for anything we didn't cover in specs for project
+
 
 * Handles AND
 code1100
@@ -440,7 +419,8 @@ code1100
             JSR         PSTRING
 
             MOVE.B      SIX_EIGT,D2
-            LSR.B       #1,D2               *If first bit is one its word. Second a long
+            LSR.B       #1,D2           *If first bit is one its word. Second a long
+            JSR         CHECKAND        *checks whether ea is valid
             BCS         JUMPW
             LSR.B       #1,D2
             BCS         JUMPL
@@ -449,7 +429,7 @@ code1100
 * Handles ADD, ADDA
 code1101
             MOVE.B      SIX_EIGT, D2
-            CMP.B       #7,D2
+            CMP.B       #7,D2           *checks whether opcode is add or adda
             BEQ         ISADDA
             CMP.B       #3,D2
             BEQ         ISADDA
@@ -457,182 +437,143 @@ code1101
             CLR         D0
             LEA         DISP_ADD,A1
             JSR         PSTRING
-            JSR         CHECKAND 
+            JSR         CHECKAND        *checks whether ea is valid
 
-            LSR.B       #1,D2               *If first bit is one its word. Second a long
+            LSR.B       #1,D2           *if first bit is one its word. Second a long
             BCS         JUMPW       
             LSR.B       #1,D2
             BCS         JUMPL
             BRA         JUMPB
  
-*FOR ADD: If the opmode is < 4 then it is add EA,reg. If opmode >= 4 reg(num),EA
+*FOR ADD: If the opmode is < 4 then it is add EA, reg. If opmode >= 4 reg(num) EA
 
 ISADDA      LEA         DISP_ADDA,A1
             JSR         PSTRING 
-            CMP         #3,D2
+            CMP         #3,D2           *checks for size
             BEQ         ADDAW
 
             LEA         DISP_SIZE_L,A1
             JSR         PSTRING 
-            JMP         ADDAEA     
+            JMP         ADDAEA          *addea handler subroutine
 
 ADDAW       LEA         DISP_SIZE_W,A1
             JSR         PSTRING 
-            JMP         ADDAEA
+            JMP         ADDAEA          *addea handler subroutine
 
 *Handles shift and rotate operations
-code1110    
-            MOVE.B      SIX_EIGT,D2
-            LSL.B       #7,D2
+code1110    MOVE.B      SIX_EIGT,D2
+            LSL.B       #7,D2           *checks whether the op is a register or memory shift
             BCS         CHECKNXTBIT
             BRA         ISREGSHIFT
 
-CHECKNXTBIT 
-            LSL.B       #1,D2
+CHECKNXTBIT LSL.B       #1,D2           *further checks whether the op is a register or memory shift
             BCS         ISMEMSHIFT
             BRA         ISREGSHIFT
 
 ISMEMSHIFT  MOVE.B      NINE_ELE,D2
-            MOVE.B      #1,MEMORREG         *IF MEMORY SHIFT SET MEMORREG TO 1
-            CMP         #0,D2
+            MOVE.B      #1,MEMORREG     *if memory shift set MEMORREG variable to 1
+            CMP         #0,D2           *checks whether op is arithmetic, logical, or rotate
             BEQ         ISASHIFT    
             CMP         #1,D2
             BEQ         ISLSHIFT    
             BRA         ISROT  
 
 ISREGSHIFT  MOVE.B      TREE_FIV,D2
-            MOVE.B      #0,MEMORREG         *IF MEMORY SHIFT SET MEMORREG TO 0
-            LSR.B       #1,D2
-            BCC         ISASHIFT
+            MOVE.B      #0,MEMORREG     *if memory shift set MEMORREG variable to 0
+            LSR.B       #1,D2           *checks whether op is arithmetic, logical, or rotate
+            BCC         ISASHIFT    
             LSR.B       #1,D2
             BCC         ISLSHIFT
             BRA         ISROT
             
-ISLSHIFT    *CHECK DIRECTION AND DISPLAY
-            MOVE.B      SIX_EIGT,D2
+ISLSHIFT    MOVE.B      SIX_EIGT,D2     *check direction and display
             LSL.B       #6,D2
             BCS         ISLSL
-
-            *DISPLAY RIGHT SHIFT
-            LEA         DISP_LSR,A1
+            
+            LEA         DISP_LSR,A1     *display lsr
             JSR         PSTRING 
-            JSR         CHECKMEMORREG
+            JSR         CHECKMEMORREG   *checks which route to take next(register or memory)
             JMP         REGORNUM
 
-ISLSL       LEA         DISP_LSL,A1
+ISLSL       LEA         DISP_LSL,A1     *display lsl
             JSR         PSTRING 
-            JSR         CHECKMEMORREG
-            JMP         REGORNUM
+            JSR         CHECKMEMORREG   *checks which route to take next(register or memory)
+            JMP         REGORNUM       
 
             *CHECKING DIRECTION AND SIZE
 ISASHIFT    MOVE.B      SIX_EIGT,D2
             LSL.B       #6,D2
             BCS         ISASL
 
-            LEA         DISP_ASR,A1        *IF NOT ASL. ASR
+            LEA         DISP_ASR,A1     *display asr
             JSR         PSTRING 
-            JSR         CHECKMEMORREG
+            JSR         CHECKMEMORREG   *checks which route to take next(register or memory)
             JMP         REGORNUM
 
-ISASL       LEA         DISP_ASL,A1
+ISASL       LEA         DISP_ASL,A1     *display asl
             JSR         PSTRING 
-            JSR         CHECKMEMORREG
+            JSR         CHECKMEMORREG   *checks which route to take next(register or memory)
             JMP         REGORNUM
 
-ISROT       MOVE.B      SIX_EIGT,D2
+ISROT       MOVE.B      SIX_EIGT,D2     *checks whether its ror or rol
             LSL.B       #6,D2
             BCS         ISROL 
 
-            *DISPLAY ROR
-            LEA         DISP_ROR,A1
+            LEA         DISP_ROR,A1     *display ror
             JSR         PSTRING 
             JSR         CHECKMEMORREG
             JMP         REGORNUM
 
-ISROL       LEA         DISP_ROL,A1
+ISROL       LEA         DISP_ROL,A1     *display ror
             JSR         PSTRING 
-            JSR         CHECKMEMORREG
+            JSR         CHECKMEMORREG   *checks which route to take next(register or memory)
             JMP         REGORNUM
             
 CHECKMEMORREG
             CLR.L       D4
-            MOVE.B      MEMORREG,D4
-            MOVE.B      TREE_FIV,D2
+            MOVE.B      MEMORREG,D4     
+            MOVE.B      TREE_FIV,D2     
             MOVE.B      ZERO_TWO,D3
-            CMP         #1,D4
-            BEQ         SHIFTEA
+            CMP         #1,D4           *checks for flag set above
+            BEQ         SHIFTEA         *if set jump to ea handler subroutine
             JSR         S_SIZE
             JSR         PRINTSPACE 
             RTS
 
-S_SIZE      MOVE.B      SIX_EIGT,D2
+S_SIZE      MOVE.B      SIX_EIGT,D2     *prints size of op
             LSR.B       #1,D2
             BCS         SIZEW
             LSR.B       #1,D2
             BCS         SIZEL
             BRA         SIZEB
             
-REGORNUM    *IS THIS A REGISTER OR A NUMBER SHIFT??
-            CLR.L       D6
+REGORNUM    CLR.L       D6              *determines whether shift source is a register or number 
             MOVE.B      TREE_FIV,D6
             CMP         #4,D6
-            BLT         NUM
+            BLT         NUM             *if bits 3-5 = 100 its a num
             MOVE.B      #0,D2
             MOVE.B      NINE_ELE,D3
-            JSR         EA         
-            JMP         SECPART
+            JSR         EA              *jump to general ea handler subroutine
+            JMP         SECPART         *handles second part of ea for these ops
             
-NUM         CLR         D1
+NUM         CLR         D1              *prints number
             LEA         DISP_HASH,A1
             JSR         PSTRING 
             MOVE.B      NINE_ELE,D1
             MOVE.B      #3,D0
             TRAP        #15      
-            JMP         SECPART
+            JMP         SECPART         *handles second part of ea for these ops
 
             
 * Reserved of SIMHALT
 code1111
             
-PRINTDATA   LEA         DISP_DATA,A1
+PRINTDATA   LEA         DISP_DATA,A1    *prints data for anything we didn't cover in specs for project
             JSR         PSTRING
             JSR         PRINTSPACE
             MOVE.W      A4,D1
             JSR         PRINTHEX
             JMP         ADDLOOP
-            
-
-JUMPW       JSR         SIZEW   
-            JMP         WHICHONE
- 
-JUMPL       JSR         SIZEL           
-            JMP         WHICHONE
- 
-JUMPB       JSR         SIZEB
-            JMP         WHICHONE
-
-SIZEW       LEA         DISP_SIZE_W, A1
-            JSR         PSTRING 
-            RTS
-
-SIZEL       LEA         DISP_SIZE_L,A1
-            JSR         PSTRING 
-            RTS
-
-SIZEB       LEA         DISP_SIZE_B,A1
-            JSR         PSTRING   
-            RTS
-
-PSTRING     MOVE.B      #14,D0
-            TRAP        #15
-            RTS
-            
-BADEA       JSR         PRINTSPACE
-            LEA         DISP_INVALIDEA,A1
-            JSR         PSTRING
-            JMP         ADDLOOP
-            
-OK          RTS
 
 *-----------------------------------------------------------
 * Title      : EA
@@ -640,32 +581,31 @@ OK          RTS
 * Date       :
 * Description: EA
 *-----------------------------------------------------------
+*general effective addressing. Mode bits are loaded into D2. 
+*Register bits are loaded into D3
+*-----------------------------------------------------------
 
-EA *handles effective addressing
-    *Mode bits are loaded into D2
-    *Register bits are loaded into D3
-            CLR.L       D1
-            CMP         #7,D2       *CHECK FOR REGISTER OPERAND
+EA          CLR.L       D1
+            CMP         #7,D2           *check whether operand is not a register
             BEQ         NOTREG
             CMP         #0,D2
-            BEQ         DREG        *CHECK FOT DATA REGISTER OPERAND
+            BEQ         DREG            *check for data register operand
             CMP         #1,D2
-            BEQ         ADREG       *CHECK FOR ADDRESS REGISTER OPERAND
+            BEQ         ADREG           *check for address register operand
             CMP         #2,D2
-            BEQ         PARADREG    *CHECK FOR (AN)
+            BEQ         PARADREG        *check for (AN)
             CMP         #3,D2
-            BEQ         POSINCR     *CHECK FOR (AN)+
+            BEQ         POSINCR         *check for (AN)+
 
-            *OTHERWISE ITS -(AN)
-            LEA         DISP_MINUS,A1
+            LEA         DISP_MINUS,A1   *defaults to -(AN)
             JSR         PSTRING               
             LEA         DISP_OPAREN,A1
             JSR         PSTRING 
             LEA         DISP_MOVE_A,A1
             JSR         PSTRING 
-            MOVE.B      D3,D1
+            MOVE.B      D3,D1           *number
             MOVE.B      #3,D0
-            TRAP        #15  
+            TRAP        #15             
             LEA         DISP_CPAREN,A1
             JSR         PSTRING 
             RTS
@@ -673,7 +613,7 @@ EA *handles effective addressing
 DREG        LEA         DISP_D,A1
             JSR         PSTRING 
             
-            MOVE.B      D3,D1
+            MOVE.B      D3,D1           *number
             MOVE.B      #3,D0
             TRAP        #15
             RTS
@@ -682,7 +622,7 @@ ADREG       CLR.L       D1
             LEA         DISP_MOVE_A,A1
             JSR         PSTRING 
             
-            MOVE.B      D3,D1
+            MOVE.B      D3,D1           *number
             MOVE.B      #3,D0
             TRAP        #15
             RTS
@@ -690,9 +630,8 @@ ADREG       CLR.L       D1
 PARADREG    LEA         DISP_OPAREN,A1
             JSR         PSTRING 
             LEA         DISP_MOVE_A,A1
-            MOVE.B      #14,D0
-            TRAP        #15
-            MOVE.B      D3,D1
+            JSR         PSTRING
+            MOVE.B      D3,D1           *number
             MOVE.B      #3,D0
             TRAP        #15
             LEA         DISP_CPAREN,A1
@@ -702,48 +641,46 @@ PARADREG    LEA         DISP_OPAREN,A1
 POSINCR     LEA         DISP_OPAREN,A1
             JSR         PSTRING 
             LEA         DISP_MOVE_A,A1
-            TRAP        #15
-            MOVE.B      D3,D1
+            JSR         PSTRING
+            MOVE.B      D3,D1           *number
             MOVE.B      #3,D0
             TRAP        #15
 
             LEA         DISP_CPAREN,A1
             JSR         PSTRING 
             LEA         DISP_PLUS,A1
-            TRAP        #15    
+            JSR         PSTRING   
             RTS
             
-NOTREG      *NOT A DATA REGISTER
-            MOVE.B      D3, D2
+NOTREG      MOVE.B      D3, D2          *not any type of register
             CMP         #1, D2
             BEQ         ADDLONG
             CMP         #4,D2
-            BEQ         ITSDATA
-            * Word direct address
-            LEA         DISP_DOLLAR, A1
+            BEQ         ITSDATA         *if its hex data and not a specific number jumps to new subroutine
+            
+            LEA         DISP_DOLLAR, A1 *word direct address
             JSR         PSTRING   
-            MOVE.W      (A5)+,A4
+            MOVE.W      (A5)+,A4        *grabs next word to print hex value
             MOVE.W      A4,D1        
             JSR         PRINTHEX
             RTS
-            
-            * long direct address
-ADDLONG     LEA         DISP_DOLLAR, A1
+                       
+ADDLONG     LEA         DISP_DOLLAR, A1 *long direct address
             JSR         PSTRING    
-            MOVE.L      (A5)+,A4
+            MOVE.L      (A5)+,A4        *grabs next long to print hex value
             MOVE.L      A4,D1  
             JSR         PRINTHEX
             RTS
             
-ITSDATA     MOVE.B      SIX_EIGT,D1
+ITSDATA     MOVE.B      SIX_EIGT,D1     *prints hex data according to size
             LSR.B       #2,D1
             BCS         LONGDATA
 
-WORDATA     LEA         DISP_HASH, A1
+WORDATA     LEA         DISP_HASH, A1   
             JSR         PSTRING  
             LEA         DISP_DOLLAR, A1
             JSR         PSTRING    
-            MOVE.W      (A5)+,A4
+            MOVE.W      (A5)+,A4        *grabs next word to print hex value
             MOVE.W      A4,D1  
             JSR         PRINTHEX
             RTS
@@ -752,23 +689,16 @@ LONGDATA    LEA         DISP_HASH, A1
             JSR         PSTRING  
             LEA         DISP_DOLLAR, A1
             JSR         PSTRING    
-            MOVE.L      (A5)+,A4
+            MOVE.L      (A5)+,A4        *grabs next long to print hex value
             MOVE.L      A4,D1  
             JSR         PRINTHEX
             RTS
-            
-            
-PRINTSPACE  LEA         DISP_TAB, A1
-            JSR         PSTRING 
-            RTS
-            
-PRINTHEX    MOVE.B      #15,D0
-            MOVE.B      #16,D2
-            TRAP        #15  
-            RTS          
 
-*ADDA HAS DIFFERENT LOGIC FOR EA SO CALLING FROM HERE INSTEAD OF ADDLOOP
-ADDAEA      MOVE.B      TREE_FIV,D2
+*--------------------------------------------------------------------------------------
+*Section for unique ea subroutines
+*--------------------------------------------------------------------------------------
+
+ADDAEA      MOVE.B      TREE_FIV,D2     
             MOVE.B      ZERO_TWO,D3
             JSR         PRINTSPACE
             JSR         EA
@@ -778,9 +708,9 @@ ADDAEA      MOVE.B      TREE_FIV,D2
             MOVE.B      NINE_ELE,D3
             JSR         EA
             JMP         ADDLOOP   
-
-*LEA            
-LEAEA       JSR         PRINTSPACE
+           
+LEAEA       JSR         CHECKJSR        *LEA ea subroutine
+            JSR         PRINTSPACE
             MOVE.B      TREE_FIV,D2
             MOVE.B      ZERO_TWO,D3
             JSR         EA
@@ -790,9 +720,8 @@ LEAEA       JSR         PRINTSPACE
             MOVE.B      NINE_ELE,D3
             JSR         EA
             JMP         ADDLOOP
-
-*ADDQ            
-QEA         JSR         PRINTSPACE
+            
+QEA         JSR         PRINTSPACE      *ADDQ ea subroutine
             LEA         DISP_HASH,A1
             JSR         PSTRING 
             MOVE.B      NINE_ELE,D1 
@@ -809,10 +738,7 @@ CONTQEA     MOVE.B      #3,D0
 EIGHT       MOVE.B      #8,D1
             JMP         CONTQEA   
 
-*MOVEQ
-MQEA        
-
-            JSR         PRINTSPACE
+MQEA        JSR         PRINTSPACE      *MOVEQ ea subroutine
             LEA         DISP_DOLLAR,A1
             JSR         PSTRING            
             LEA         DISP_HASH,A1
@@ -821,9 +747,7 @@ MQEA
             CLR         D1
             CLR         D2            
             MOVE.B      D7,D1       
-            MOVE.B      #15, D0
-            MOVE.B      #16, D2
-            TRAP        #15
+            JSR         PRINTHEX
             LEA         DISP_COMMA,A1
             JSR         PSTRING 
             MOVE.B      #0,D2
@@ -831,27 +755,25 @@ MQEA
             JSR         EA
             JMP         ADDLOOP         
 
-*ARITHMETIC AND LOGICAL SHIFTS
-SECPART     LEA         DISP_COMMA,A1
+SECPART     LEA         DISP_COMMA,A1   *shift and rotate second part of ea handler
             JSR         PSTRING 
             MOVE.B      #0,D2
             MOVE.B      ZERO_TWO,D3
             JSR         EA
             JMP         ADDLOOP
             
-SHIFTEA     JSR         SIZEW
+SHIFTEA     JSR         SIZEW           *shift and rotate default ea handler
             JSR         PRINTSPACE
             JSR         CHECKSHIFT
             JSR         EA
             JMP         ADDLOOP            
-
-*ANYTHING WITH AN OPCODE            
-WHICHONE    JSR         PRINTSPACE
+            
+WHICHONE    JSR         PRINTSPACE      *basically handles anything with an opcode like sub
             MOVE.B      SIX_EIGT,D6
             CMP         #4,D6
             BLT         EAFIRST
             
-            MOVE        #0,D2               *EA is second in this scenario
+            MOVE        #0,D2           *EA is second in this scenario
             MOVE.B      NINE_ELE,D3
             JSR         EA
             LEA         DISP_COMMA,A1
@@ -867,7 +789,7 @@ EAFIRST
             JSR         EA            
             LEA         DISP_COMMA,A1
             JSR         PSTRING 
-            MOVE        #0,D2               *EA is second in this scenario
+            MOVE        #0,D2           *EA is second in this scenario
             MOVE.B      NINE_ELE,D3
             JSR         EA
             JMP         ADDLOOP
@@ -876,30 +798,30 @@ EAFIRST
 BCC         JSR         PRINTSPACE     
             MOVE.W      A5,A3        
             CMP.B       #$00,D7
-            BEQ         EVAL1632            *16-bit Displacement
+            BEQ         EVAL1632        *16-bit Displacement
                
             CMP.B       #$FF,D7
-            BEQ         EVAL1632            *32-bit Displacement
+            BEQ         EVAL1632        *32-bit Displacement
                                                                        
-            JSR         CHECK0TO7           *8-bit Displacement
-            CMP.B       $80,D7              *Check if the number is a negative 2's complement byte
+            JSR         CHECK0TO7       *8-bit Displacement
+            CMP.B       $80,D7          *check if the number is a negative 2's complement byte
             BGE         NOTNEG
-            JSR         NEGDIS              *If so, handle it appropriately.
+            JSR         NEGDIS          *if so, handle it appropriately.
             JSR         BCCPRINT
 NOTNEG      MOVE.W      A3,D7
-            ADD.W       D2,D7               *Apply displacement to address pointer to get branch location
+            ADD.W       D2,D7           *apply displacement to address pointer to get branch location
 
 BCCPRINT    MOVE.L      D7,D1               
             JSR         PRINTHEX            
             JMP         ADDLOOP
 
 NEGDIS      MOVE.B      D7,D2
-            MULS        #-1,D2              *Find the absolute value of the negative number
+            MULS        #-1,D2          *find the absolute value of the negative number
             MOVE.W      A3,D7
-            SUB.B       D2,D7               *Apply displacement to address pointer to get branch location
+            SUB.B       D2,D7           *apply displacement to word value to get location
             RTS        
 
-EVAL1632    MOVE.W      (A5)+,D7            *Copy the current instruction pointer location               
+EVAL1632    MOVE.W      (A5)+,D7        *grab next word              
             JSR         CHECKNEG 
 ADD1632     MOVE.W      A3,D2
             ADD.W       D2,D7                        
@@ -914,22 +836,22 @@ CHECKNEG    MOVE.W      D7,D2
             SUB.W       D2,D7
             JMP         BCCPRINT               
                 
-CHECK0TO7   MOVE.W      D7,D2               *Reload full opcode for evaluation
-            LSL.W       #8,D2               *Truncate up to bit 7
-            LSR.W       #8,D2               *Isolate remainder
+CHECK0TO7   MOVE.W      D7,D2           *full opcode for evaluation
+            LSL.W       #8,D2           *only need bit 7
+            LSR.W       #8,D2           *isolate remaining bit
             RTS
 
 *MOVEM EA SECTION                
-MOVEMEA     MOVE.W      (A5)+,D4        *Moves range word from register to D4
-            MOVE.B      NINE_ELE,D2     *Bit 10 determines whether its a reg->mem or mem->reg
+MOVEMEA     MOVE.W      (A5)+,D4        *moves range word from register to D4
+            MOVE.B      NINE_ELE,D2     *bit 10 determines whether its a reg->mem or mem->reg
             LSR.B       #2,D2
-            BCS         MEMTOREG        *If the carry flag is set its mem->reg
+            BCS         MEMTOREG        *if the carry flag is set its mem->reg
 
             *Reg->mem
             JSR         REGMEMCHECK
-            MOVE.B      TREE_FIV,D2     *If not it defaults to reg->mem. Check mode for post dec
+            MOVE.B      TREE_FIV,D2     *if not it defaults to reg->mem. Check mode for post dec
             CMP         #4,D2
-            BEQ         REVMASK         *If mode indicates post dec then we need to print the reversed mask
+            BEQ         REVMASK         *if mode indicates post dec then we need to print the reversed mask
             JSR         MASK
             LEA         DISP_COMMA,A1         
             JSR         PSTRING
@@ -1110,6 +1032,12 @@ PSLASH      LEA         DISP_SLASH,A1
             JSR         PSTRING
             RTS           
 
+*-----------------------------------------------------------
+* Title      : EA Checks
+* Written by : Team Schmos
+* Date       :
+* Description: EA Checks for invalid effective addresses
+*-----------------------------------------------------------
 REGMEMCHECK MOVE.B      TREE_FIV,D2     *
             MOVE.B      ZERO_TWO,D3
             CMP         #2,D2
@@ -1122,7 +1050,7 @@ REGMEMCHECK MOVE.B      TREE_FIV,D2     *
             BLT         OK
             BRA         BADEA
 
-MEMREGCHECK MOVE.B      TREE_FIV,D2     *
+MEMREGCHECK MOVE.B      TREE_FIV,D2     
             MOVE.B      ZERO_TWO,D3
             CMP         #2,D2
             BEQ         OK
@@ -1136,8 +1064,6 @@ MEMREGCHECK MOVE.B      TREE_FIV,D2     *
 
 MOVECHECK   MOVE.B      NINE_ELE,D2
             MOVE.B      SIX_EIGT,D3
-            CMP.B       #1,D3
-            BEQ         BADEA
             CMP.B       #7,D3
             BNE         OK
             CMP.B       #2,D2
@@ -1172,6 +1098,22 @@ CHECKADDQ   MOVE.B      TREE_FIV,D2
             BGE         BADEA
             RTS
             
+CHECKADD    MOVE.B      SIX_EIGT,D6
+            CMP         #4,D6
+            BLT         OK
+            
+            MOVE.B      TREE_FIV,D2
+            MOVE.B      ZERO_TWO,D3
+            CMP         #0,D2
+            BEQ         BADEA
+            CMP         #1,D2
+            BEQ         BADEA
+            CMP         #7,D2
+            BNE         OK                          
+            CMP         #2,D3
+            BGE         BADEA
+            RTS       
+            
 CHECKOR     MOVE.B      SIX_EIGT,D6
             CMP         #4,D6
             BLT         ORFIRST
@@ -1196,7 +1138,7 @@ ORFIRST     MOVE.B      TREE_FIV,D2
 
 CHECKSUB    MOVE.B      SIX_EIGT,D6
             CMP         #4,D6
-            BLT         SUBFIRST
+            BLT         OK
             
             MOVE.B      TREE_FIV,D2
             MOVE.B      ZERO_TWO,D3
@@ -1209,8 +1151,6 @@ CHECKSUB    MOVE.B      SIX_EIGT,D6
             CMP         #2,D3
             BGE         BADEA
             RTS
-
-SUBFIRST    JMP         OK   
 
 CHECKAND    MOVE.B      SIX_EIGT,D6
             CMP         #4,D6
@@ -1248,8 +1188,48 @@ CHECKSHIFT  MOVE.B      MEMORREG,D1
             CMP         #2,D3
             BGE         BADEA
             RTS 
-      
+*-----------------------------------------------------------------------------------------
+*General subroutines used by all
+PSTRING     MOVE.B      #14,D0
+            TRAP        #15
+            RTS
             
+PRINTSPACE  LEA         DISP_TAB, A1
+            JSR         PSTRING 
+            RTS
+            
+PRINTHEX    MOVE.B      #15,D0
+            MOVE.B      #16,D2
+            TRAP        #15  
+            RTS   
+
+JUMPW       JSR         SIZEW   
+            JMP         WHICHONE
+ 
+JUMPL       JSR         SIZEL           
+            JMP         WHICHONE
+ 
+JUMPB       JSR         SIZEB
+            JMP         WHICHONE
+
+SIZEW       LEA         DISP_SIZE_W, A1
+            JSR         PSTRING 
+            RTS
+
+SIZEL       LEA         DISP_SIZE_L,A1
+            JSR         PSTRING 
+            RTS
+
+SIZEB       LEA         DISP_SIZE_B,A1
+            JSR         PSTRING   
+            RTS                   
+            
+BADEA       JSR         PRINTSPACE
+            LEA         DISP_INVALIDEA,A1
+            JSR         PSTRING
+            JMP         ADDLOOP
+            
+OK          RTS            
                 
 CLEARVARS   CLR.L       TWEL_FIF
             CLR.L       NINE_ELE
@@ -1260,6 +1240,17 @@ CLEARVARS   CLR.L       TWEL_FIF
             CLR.L       MEMORREG
             CLR.L       LONGFLAG
             RTS
+            
+CLEAR_REGS  CLR.L       D0
+            CLR.L       D1
+            CLR.L       D2
+            CLR.L       D3
+            CLR.L       D4
+            CLR.L       D5
+            CLR.L       D6
+            CLR.L       D7
+            RTS            
+
             
     SIMHALT             ; halt simulator
 
