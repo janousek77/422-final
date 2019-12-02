@@ -284,8 +284,8 @@ ISNOT
 ISJSR
             LEA         DISP_JSR, A1
             JSR         PSTRING 
-            JSR         PRINTSPACE
             JSR         CHECKJSR        *checks whether ea is valid
+            JSR         PRINTSPACE
             MOVE.B      TREE_FIV,D2
             MOVE.B      ZERO_TWO,D3
             JSR         EA              *general ea subroutine
@@ -330,6 +330,8 @@ code0110
             BEQ         ISEQ
             CMP         #14,D2
             BEQ         ISGT
+            CMP         #15,D2
+            BNE         PRINTDATA
 
             LEA         DISP_BLE,A1
             JSR         PSTRING 
@@ -355,7 +357,8 @@ ISEQ
             JSR         PSTRING 
 
             
-BSIZE       CMP.B       #$00,D7         *size based on displacement subroutine
+BSIZE       AND.W       #%0000000011111111,D7
+            CMP.B       #$00,D7         *size based on displacement subroutine
             BEQ         BCCW                      
             CMP.B       #$FF,D7
             BEQ         BCCL      
@@ -417,10 +420,10 @@ code1100
             CLR         D0
             LEA         DISP_AND,A1
             JSR         PSTRING
+            JSR         CHECKAND        *checks whether ea is valid
 
             MOVE.B      SIX_EIGT,D2
             LSR.B       #1,D2           *If first bit is one its word. Second a long
-            JSR         CHECKAND        *checks whether ea is valid
             BCS         JUMPW
             LSR.B       #1,D2
             BCS         JUMPL
@@ -438,6 +441,7 @@ code1101
             LEA         DISP_ADD,A1
             JSR         PSTRING
             JSR         CHECKAND        *checks whether ea is valid
+            MOVE.B      SIX_EIGT, D2
 
             LSR.B       #1,D2           *if first bit is one its word. Second a long
             BCS         JUMPW       
@@ -673,6 +677,8 @@ ADDLONG     LEA         DISP_DOLLAR, A1 *long direct address
             RTS
             
 ITSDATA     MOVE.B      SIX_EIGT,D1     *prints hex data according to size
+            CMP         #3,D1
+            BEQ         WORDATA
             LSR.B       #2,D1
             BCS         LONGDATA
 
@@ -1045,10 +1051,10 @@ REGMEMCHECK MOVE.B      TREE_FIV,D2     *
             CMP         #4,D2
             BEQ         OK
             CMP         #7,D2
-            BNE         BADEA                          
+            BNE         BADEAS                          
             CMP         #2,D3
             BLT         OK
-            BRA         BADEA
+            BRA         BADEAS
 
 MEMREGCHECK MOVE.B      TREE_FIV,D2     
             MOVE.B      ZERO_TWO,D3
@@ -1057,10 +1063,10 @@ MEMREGCHECK MOVE.B      TREE_FIV,D2
             CMP         #3,D2
             BEQ         OK
             CMP         #7,D2
-            BNE         BADEA                          
+            BNE         BADEAS                          
             CMP         #2,D3
             BLT         OK
-            BRA         BADEA                          
+            BRA         BADEAS                          
 
 MOVECHECK   MOVE.B      NINE_ELE,D2
             MOVE.B      SIX_EIGT,D3
@@ -1198,6 +1204,18 @@ PRINTSPACE  LEA         DISP_TAB, A1
             JSR         PSTRING 
             RTS
             
+SPACE       LEA         DISP_SPACE,A1
+            JSR         PSTRING   
+            RTS
+
+TABM1       LEA         DISP_M1,A1
+            JSR         PSTRING   
+            RTS                           
+            
+TABM2       LEA         DISP_M2,A1
+            JSR         PSTRING   
+            RTS       
+            
 PRINTHEX    MOVE.B      #15,D0
             MOVE.B      #16,D2
             TRAP        #15  
@@ -1222,10 +1240,14 @@ SIZEL       LEA         DISP_SIZE_L,A1
 
 SIZEB       LEA         DISP_SIZE_B,A1
             JSR         PSTRING   
-            RTS                   
-            
+            RTS    
+
 BADEA       JSR         PRINTSPACE
             LEA         DISP_INVALIDEA,A1
+            JSR         PSTRING
+            JMP         ADDLOOP
+            
+BADEAS      LEA         DISP_INVALIDEA,A1
             JSR         PSTRING
             JMP         ADDLOOP
             
@@ -1291,6 +1313,8 @@ DISP_BRA        DC.B    'BRA',0
 DISP_DATA       DC.B    'DATA',0         *REMINDER: Label changed without changing name
 DISP_INVALIDEA  DC.B    'BadEA',0
 DISP_TAB        DC.B    '       ',0
+DISP_M1         DC.B    '      ',0
+DISP_M2         DC.B    '     ',0
 
 * Printed Symbols
 *---------------Opcode--Operands------------Comments---------------------------
