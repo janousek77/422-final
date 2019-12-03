@@ -26,6 +26,11 @@ START:
             MOVE.L      LAST,A6
 
 ADDLOOP:                                *loops through address and passes word data into D7
+            ADD.B       #1,ADDLOOPCOUNT
+            CMP.B       #30,ADDLOOPCOUNT
+            BEQ         PAUSEFORINPUT
+                       
+CONTINUELOOP
             CMP.L       A6,A5           *compares the current address with ending address
             BGT         DONE            *breaks if end is less than beginning
             JSR         CLEAR_REGS      *subroutine to clear all data registers
@@ -46,6 +51,15 @@ ADDLOOP:                                *loops through address and passes word d
 
 DONE
     SIMHALT
+PAUSEFORINPUT
+            LEA         ADDLOOPMESS,A1
+            MOVE.B      #14,D0
+            TRAP        #15
+            
+            MOVE.B      #4,D0
+            TRAP        #15
+            MOVE.B      #0,ADDLOOPCOUNT
+            JMP         CONTINUELOOP   
 
 
 CHECKVALUES CMP.L       #1,D1          *if the address length is less than 1, print error
@@ -1342,8 +1356,10 @@ ZERO_TWO        DC.B    1
 CONDITION       DC.B    1
 MEMORREG        DC.B    1
 LONGFLAG        DC.B    1
+ADDLOOPCOUNT    DC.B    1
 
 * IOFILEVARS
+ADDLOOPMESS     DC.B    CR,LF,'Press Enter To Continue',CR,LF,0
 STARTADDMESS    DC.B    'Please enter a starting address: ',0
 ENDADDMESS      DC.B    'Please enter an ending address: ',0
 ERRADD          DC.B    'Not an even address',0
@@ -1355,6 +1371,7 @@ LAST            DS.L    1
     SIMHALT             ; halt simulator
 
     END    START        ; last line of source
+
 
 
 
