@@ -215,6 +215,7 @@ jmp_table   JMP         code0000       *for jumping to a specific instruction
             JMP         code1111
 
 code0000
+            JSR         PRINTDATA
 
 * Handles MOVEA.B, MOVE.B
 code0001
@@ -410,6 +411,10 @@ code1000
 
             JSR         CHECKOR
             MOVE.B      SIX_EIGT,D2
+            CMP         #3,D2
+            BEQ         PRINTDATA
+            CMP         #7,D2
+            BEQ         PRINTDATA
             LSR.B       #1,D2           *if first bit is one its word. Second a long
             BCS         JUMPW
             LSR.B       #1,D2
@@ -418,6 +423,12 @@ code1000
        
 * Handles SUB
 code1001
+            MOVE.B      SIX_EIGT,D0
+            CMP.B       #7,D0           
+            BEQ         PRINTDATA
+            CMP.B       #3,D0
+            BEQ         PRINTDATA
+            
             LEA         DISP_SUB,A1
             JSR         PSTRING
             JSR         CHECKSUB        *checks whether ea is valid
@@ -448,6 +459,10 @@ code1100
             JSR         CHECKAND        *checks whether ea is valid
 
             MOVE.B      SIX_EIGT,D2
+            CMP.B       #7,D2           *checks whether opcode is add or adda
+            BEQ         PRINTDATA
+            CMP.B       #3,D2
+            BEQ         PRINTDATA
             LSR.B       #1,D2           *If first bit is one its word. Second a long
             BCS         JUMPW
             LSR.B       #1,D2
@@ -480,6 +495,8 @@ ISADDA      LEA         DISP_ADDA,A1
             JSR         PSTRING 
             CMP         #3,D2           *checks for size
             BEQ         ADDAW
+            CMP         #7,D2
+            BNE         PRINTDATA
 
             LEA         DISP_SIZE_L,A1
             JSR         PSTRING 
@@ -1071,35 +1088,34 @@ PSLASH      LEA         DISP_SLASH,A1
 *-----------------------------------------------------------
 REGMEMCHECK MOVE.B      TREE_FIV,D2     *
             MOVE.B      ZERO_TWO,D3
-            JSR         SIZECHECK
             CMP         #2,D2
             BEQ         OK
             CMP         #4,D2
             BEQ         OK
             CMP         #7,D2
-            BNE         BADEAS                          
+            BNE         SIZECHECK                          
             CMP         #2,D3
             BLT         OK
-            BRA         BADEAS
+            BRA         SIZECHECK
 
 MEMREGCHECK MOVE.B      TREE_FIV,D2     
             MOVE.B      ZERO_TWO,D3
-            JSR         SIZECHECK
             CMP         #2,D2
             BEQ         OK
             CMP         #3,D2
             BEQ         OK
             CMP         #7,D2
-            BNE         BADEAS                          
+            BNE         SIZECHECK                          
             CMP         #2,D3
             BLT         OK
-            BRA         BADEAS                          
+            BRA         SIZECHECK                          
 
 SIZECHECK   CMP         #0,D3
             BRA         MMBEAW
             MOVE.L      (A5)+,D7
-            BRA         OK
-MMBEAW      MOVE.W      (A5)+,D7       
+            BRA         BADEAS   
+MMBEAW      MOVE.W      (A5)+,D7 
+            BRA         BADEAS      
             RTS
             
 MOVECHECK   MOVE.B      NINE_ELE,D2
@@ -1404,6 +1420,7 @@ BUFFER          DS.B    1
     SIMHALT             ; halt simulator
 
     END    START        ; last line of source
+
 
 
 
