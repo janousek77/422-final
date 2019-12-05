@@ -5,18 +5,20 @@
 * Description: This is the file for handling IO
 *-----------------------------------------------------------
     ORG    $1000
-START:                  
-            LEA         STARTADDMESS,A1 *message to ask for starting address
+START:                
+AGAIN       LEA         STARTADDMESS,A1
             JSR         PSTRING 
+            LEA         BUFFER,A1
             MOVE.B      #2,D0
             TRAP        #15
 
-            JSR         CHECKVALUES     *subroutine to make sure its a valid address
-            MOVE.L      A1,BEGIN        *variable that holds the started address value
+            JSR         CHECKVALUES     *subroutine to make sure its a valid address        
+            MOVE.L      A1,BEGIN                *variable that holds the started address value
             CLR.L       D4
 
             LEA         ENDADDMESS,A1   *message to ask for ending address
             JSR         PSTRING 
+            LEA         BUFFER,A1
             MOVE.B      #2,D0
             TRAP        #15
 
@@ -32,7 +34,7 @@ ADDLOOP:                                *loops through address and passes word d
                        
 CONTINUELOOP
             CMP.L       A6,A5           *compares the current address with ending address
-            BGT         DONE            *breaks if end is less than beginning
+            BGT         ENDMESS         *breaks if end is less than beginning
             JSR         CLEAR_REGS      *subroutine to clear all data registers
             
             LEA         DISP_NL,A1
@@ -51,6 +53,7 @@ CONTINUELOOP
 
 DONE
     SIMHALT
+    
 PAUSEFORINPUT
             LEA         ADDLOOPMESS,A1
             MOVE.B      #14,D0
@@ -99,8 +102,16 @@ LETTER      SUB.B       #$37,D2         *subtract 37 for HEX letter
 
 CONVDONE    MOVE.L      D4,D5
             RTS
+            
+ENDMESS     LEA         CONTMESS,A1     *message to ask if you want to test more or end
+            JSR         PSTRING 
+            MOVE.B      #4,D0
+            TRAP        #15
 
-
+            CMP         #1,D1
+            BEQ         AGAIN
+            BNE         DONE
+            
 *-----------------------------------------------------------
 * Title      : Opcodes
 * Written by : Team Schmos
@@ -1060,6 +1071,7 @@ PSLASH      LEA         DISP_SLASH,A1
 *-----------------------------------------------------------
 REGMEMCHECK MOVE.B      TREE_FIV,D2     *
             MOVE.B      ZERO_TWO,D3
+            JSR         SIZECHECK
             CMP         #2,D2
             BEQ         OK
             CMP         #4,D2
@@ -1072,6 +1084,7 @@ REGMEMCHECK MOVE.B      TREE_FIV,D2     *
 
 MEMREGCHECK MOVE.B      TREE_FIV,D2     
             MOVE.B      ZERO_TWO,D3
+            JSR         SIZECHECK
             CMP         #2,D2
             BEQ         OK
             CMP         #3,D2
@@ -1082,6 +1095,13 @@ MEMREGCHECK MOVE.B      TREE_FIV,D2
             BLT         OK
             BRA         BADEAS                          
 
+SIZECHECK   CMP         #0,D3
+            BRA         MMBEAW
+            MOVE.L      (A5)+,D7
+            BRA         OK
+MMBEAW      MOVE.W      (A5)+,D7       
+            RTS
+            
 MOVECHECK   MOVE.B      NINE_ELE,D2
             MOVE.B      SIX_EIGT,D3
             CMP.B       #7,D3
@@ -1200,13 +1220,13 @@ CHECKSHIFT  MOVE.B      MEMORREG,D1
             MOVE.B      TREE_FIV,D2
             MOVE.B      ZERO_TWO,D3
             CMP         #0,D2
-            BEQ         BADEA
+            BEQ         BADEAS                          
             CMP         #1,D2
-            BEQ         BADEA
+            BEQ         BADEAS                          
             CMP         #7,D2
             BNE         OK                          
             CMP         #2,D3
-            BGE         BADEA
+            BGE         BADEAS                          
             RTS 
 *-----------------------------------------------------------------------------------------
 *General subroutines used by all
@@ -1285,7 +1305,16 @@ CLEAR_REGS  CLR.L       D0
             CLR.L       D5
             CLR.L       D6
             CLR.L       D7
-            RTS            
+            RTS          
+
+CLEAR_AREGS MOVE.L      $0,A1
+            MOVE.L      $0,A2
+            MOVE.L      $0,A3
+            MOVE.L      $0,A4
+            MOVE.L      $0,A5
+            MOVE.L      $0,A6
+            MOVE.L      $0,A0
+            RTS              
 
             
     SIMHALT             ; halt simulator
@@ -1361,16 +1390,21 @@ ADDLOOPCOUNT    DC.B    1
 * IOFILEVARS
 ADDLOOPMESS     DC.B    CR,LF,'Press Enter To Continue',CR,LF,0
 STARTADDMESS    DC.B    'Please enter a starting address: ',0
+STARTADDMESS1   DC.B    'Please enter a new starting address: ',0
 ENDADDMESS      DC.B    'Please enter an ending address: ',0
+ENDADDMESS2     DC.B    'Please enter an ending address: ',0
+CONTMESS        DC.B    CR,LF,'Enter one to start over. Enter anything else to end.',CR,LF,0
 ERRADD          DC.B    'Not an even address',0
 ERRADDLOC       DC.B    'Beginning address must be before ending address',0
 ERRADD2         DC.B    'Has to be greater than 0 and less than 8',0
 BEGIN           DS.L    1   *beginning address
-LAST            DS.L    1
+LAST            DS.L    1   
+BUFFER          DS.B    1
 
     SIMHALT             ; halt simulator
 
     END    START        ; last line of source
+
 
 
 
